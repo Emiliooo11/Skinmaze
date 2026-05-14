@@ -1,0 +1,288 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  CASE_OPEN
+  CASE_WIN
+  MARKETPLACE_PURCHASE
+  MARKETPLACE_SALE
+  AFFILIATE_COMMISSION
+  BONUS
+  REFUND
+  ADMIN_ADJUSTMENT
+}
+
+enum InventoryState {
+  AVAILABLE
+  RESERVED
+  LOCKED
+  PENDING_TRADE
+  DELIVERED
+  FAILED
+}
+
+enum InventorySource {
+  INTERNAL
+  WAXPEER
+  CSFLOAT
+  SKINPORT
+  DMARKET
+}
+
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  CANCELLED
+}
+
+enum TradeType {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+enum TradeStatus {
+  PENDING
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  FAILED
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  steamId        String   @unique
+  username       String
+  avatar         String
+  profileUrl     String
+  balance        Float    @default(0)
+  xp             Int      @default(0)
+  level          Int      @default(1)
+  role           UserRole @default(USER)
+  banned         Boolean  @default(false)
+  affiliateCode  String?  @unique
+  totalWagered   Float    @default(0)
+  totalDeposited Float    @default(0)
+  totalWithdrawn Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  transactions   Transaction[]
+  caseOpenings   CaseOpening[]
+  inventoryItems InventoryItem[]
+  marketListings MarketListing[]
+  seedPairs      SeedPair[]
+  trades         Trade[]
+
+  @@index([steamId])
+  @@index([role])
+}
+
+// ─── Wallet / Transactions ────────────────────────────────────────────────────
+
+model Transaction {
+  id            String          @id @default(cuid())
+  userId        String
+  type          TransactionType
+  amount        Float
+  balanceBefore Float
+  balanceAfter  Float
+  referenceId   String?
+  metadata      Json            @default("{}")
+  createdAt     DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([type])
+  @@index([referenceId])
+  @@index([createdAt])
+}
+
+// ─── Skins ────────────────────────────────────────────────────────────────────
+
+model Skin {
+  id             String   @id @default(cuid())
+  marketHashName String   @unique
+  weapon         String
+  skinName       String
+  rarity         String
+  wear           String
+  floatValue     Float?
+  stickers       Json     @default("[]")
+  phase          String?
+  paintSeed      Int?
+  iconUrl        String
+  inspectLink    String?
+  steamPrice     Float    @default(0)
+  providerPrice  Float    @default(0)
+  finalPrice     Float    @default(0)
+  liquidityScore Float    @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  caseItems      CaseItem[]
+  inventoryItems InventoryItem[]
+  marketListings MarketListing[]
+  caseOpenings   CaseOpening[]
+
+  @@index([rarity])
+  @@index([wear])
+  @@index([finalPrice])
+  @@index([marketHashName])
+}
+
+// ─── Cases ────────────────────────────────────────────────────────────────────
+
+model Case {
+  id        String   @id @default(cuid())
+  name      String
+  image     String
+  price     Float
+  houseEdge Float    @default(0.07)
+  active    Boolean  @default(false)
+  featured  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items    CaseItem[]
+  openings CaseOpening[]
+
+  @@index([active])
+  @@index([featured])
+}
+
+model CaseItem {
+  id                String @id @default(cuid())
+  caseId            String
+  skinId            String
+  probabilityWeight Float
+  displayedOdds     Float  @default(0)
+  rarityTier        String
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  skin Skin @relation(fields: [skinId], references: [id])
+
+  @@index([caseId])
+}
+
+model CaseOpening {
+  id             String   @id @default(cuid())
+  userId         String
+  caseId         String
+  skinId         String
+  serverSeedHash String
+  clientSeed     String
+  nonce          Int
+  roll           Float
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  case Case @relation(fields: [caseId], references: [id])
+  skin Skin @relation(fields: [skinId], references: [id])
+
+  @@index([userId])
+  @@index([caseId])
+  @@index([createdAt])
+}
+
+// ─── Provably Fair ───────────────────────────────────────────────────────────
+
+model SeedPair {
+  id             String   @id @default(cuid())
+  userId         String
+  serverSeed     String
+  serverSeedHash String
+  clientSeed     String
+  nonce          Int      @default(0)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, active])
+}
+
+// ─── Inventory ───────────────────────────────────────────────────────────────
+
+model InventoryItem {
+  id             String         @id @default(cuid())
+  skinId         String
+  userId         String?
+  state          InventoryState @default(AVAILABLE)
+  sourceProvider InventorySource @default(INTERNAL)
+  externalId     String?
+  reservedAt     DateTime?
+  tradableAfter  DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  skin           Skin           @relation(fields: [skinId], references: [id])
+  user           User?          @relation(fields: [userId], references: [id])
+  marketListings MarketListing[]
+
+  @@index([userId, state])
+  @@index([state])
+  @@index([skinId])
+}
+
+// ─── Marketplace ─────────────────────────────────────────────────────────────
+
+model MarketListing {
+  id              String        @id @default(cuid())
+  sellerId        String
+  skinId          String
+  inventoryItemId String
+  price           Float
+  status          ListingStatus @default(ACTIVE)
+  createdAt       DateTime      @default(now())
+  soldAt          DateTime?
+
+  seller        User          @relation(fields: [sellerId], references: [id])
+  skin          Skin          @relation(fields: [skinId], references: [id])
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([status])
+  @@index([skinId])
+  @@index([sellerId])
+  @@index([price])
+}
+
+// ─── Steam Trades ─────────────────────────────────────────────────────────────
+
+model Trade {
+  id            String      @id @default(cuid())
+  userId        String
+  botId         String
+  tradeOfferId  String?     @unique
+  type          TradeType
+  status        TradeStatus @default(PENDING)
+  items         Json        @default("[]")
+  steamResponse Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([tradeOfferId])
+}
