@@ -4,8 +4,8 @@ import { MarketplaceService } from './marketplace.service'
 import { IsNumber, IsString, Min } from 'class-validator'
 
 class ListItemDto {
-  @IsString() itemId: string
-  @IsNumber() @Min(0.01) price: number
+  @IsString() itemId!: string
+  @IsNumber() @Min(0.01) price!: number
 }
 
 @Controller('marketplace')

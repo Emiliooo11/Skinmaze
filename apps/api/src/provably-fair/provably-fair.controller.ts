@@ -5,14 +5,14 @@ import { IsString } from 'class-validator'
 
 class SetClientSeedDto {
   @IsString()
-  clientSeed: string
+  clientSeed!: string
 }
 
 class VerifyRollDto {
-  @IsString() serverSeed: string
-  @IsString() clientSeed: string
-  nonce: number
-  roll: number
+  @IsString() serverSeed!: string
+  @IsString() clientSeed!: string
+  nonce!: number
+  roll!: number
 }
 
 @Controller('provably-fair')

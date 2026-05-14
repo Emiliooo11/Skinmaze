@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common'
 import { PrismaService } from '../common/prisma/prisma.service'
 import { RedisService } from '../common/redis/redis.service'
-import { TransactionType } from '@prisma/client'
+import { Prisma, TransactionType } from '@prisma/client'
 import { v4 as uuidv4 } from 'uuid'
 
 @Injectable()
@@ -51,7 +51,7 @@ export class WalletService {
           balanceBefore: user.balance - params.amount,
           balanceAfter: user.balance,
           referenceId: params.referenceId,
-          metadata: params.metadata || {},
+          metadata: (params.metadata || {}) as Prisma.InputJsonValue,
         },
       })
     })
@@ -99,7 +99,7 @@ export class WalletService {
             balanceBefore: updated.balance + params.amount,
             balanceAfter: updated.balance,
             referenceId: params.referenceId,
-            metadata: params.metadata || {},
+            metadata: (params.metadata || {}) as Prisma.InputJsonValue,
           },
         })
       })
