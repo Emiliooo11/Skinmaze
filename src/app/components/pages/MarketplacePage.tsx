@@ -1,9 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useStore } from '@/app/store/useStore';
-import { MP_CATS, EXTS, KNIFE_TYPES } from '@/app/lib/data';
-import { useListings } from '@/app/lib/useListings';
-import { NormalizedSkin } from '@/app/lib/csfloat';
+import { MP_CATS, EXTS, KNIFE_TYPES, POOL, RAR, Rarity, priceFor, fmt } from '@/app/lib/data';
 import { CoinIcon } from '../CoinIcon';
 
 const COLOR_LIST = [
@@ -11,20 +9,75 @@ const COLOR_LIST = [
   '#2ec5b6', '#3ad48f', '#46c041', '#e6c33e', '#e8843e', '#3a3f3a',
 ];
 
-// CSFloat category ints for common weapon types
-const CAT_MAP: Record<string, number> = {
-  Knifes: 0, Gloves: 6, Pistol: 1, Rifle: 2, Sniper: 3, SMG: 4, Shotgun: 5, Machinegun: 7,
+// Build a richer local skin list from POOL (multiple wear variants)
+const WEAR_LIST = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Battle-Scarred'];
+const WEAR_SHORT: Record<string, string> = { 'Factory New': 'FN', 'Minimal Wear': 'MW', 'Field-Tested': 'FT', 'Battle-Scarred': 'BS' };
+const FLOAT_RANGE: Record<string, [number, number]> = {
+  'Factory New': [0.000, 0.07],
+  'Minimal Wear': [0.07, 0.15],
+  'Field-Tested': [0.15, 0.37],
+  'Battle-Scarred': [0.45, 1.0],
 };
 
-// CSFloat rarity ints
-const RAR_MAP: Record<string, number> = {
-  blue: 3, purple: 4, pink: 5, red: 6, gold: 7,
-};
+interface LocalSkin {
+  id: string;
+  name: string;
+  skin: string;
+  fullName: string;
+  wear: string;
+  wearShort: string;
+  float: number;
+  rar: Rarity;
+  color: string;
+  rarityName: string;
+  cat: string;
+  price: number;
+  priceDisplay: string;
+  imageUrl: string;
+  isStatTrak: boolean;
+}
+
+function seed(str: string) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) { h = Math.imul(31, h) + str.charCodeAt(i) | 0; }
+  return Math.abs(h) / 2147483648;
+}
+
+const ALL_SKINS: LocalSkin[] = (() => {
+  const out: LocalSkin[] = [];
+  let idx = 0;
+  for (const p of POOL) {
+    for (const wear of WEAR_LIST) {
+      const isST = idx % 7 === 0;
+      const [flo, fhi] = FLOAT_RANGE[wear];
+      const rng = seed(`${p.marketName}-${wear}`);
+      const float = +(flo + rng * (fhi - flo)).toFixed(6);
+      const price = priceFor(p.rar) * (wear === 'Factory New' ? 1 : wear === 'Minimal Wear' ? 0.75 : wear === 'Field-Tested' ? 0.5 : 0.3);
+      out.push({
+        id: `${idx++}`,
+        name: p.w,
+        skin: p.skin,
+        fullName: `${isST ? 'StatTrak™ ' : ''}${p.w} | ${p.skin} (${wear})`,
+        wear,
+        wearShort: WEAR_SHORT[wear],
+        float,
+        rar: p.rar,
+        color: RAR[p.rar].c,
+        rarityName: RAR[p.rar].n,
+        cat: p.cat,
+        price: +price.toFixed(2),
+        priceDisplay: fmt(price),
+        imageUrl: p.imageUrl,
+        isStatTrak: isST,
+      });
+    }
+  }
+  return out;
+})();
 
 function chk(on: boolean) {
   return { box: on ? '#46c041' : 'transparent', border: on ? '#46c041' : 'rgba(255,255,255,.18)', check: on ? '✓' : '', color: on ? '#e8ece8' : '#9aa39a' };
 }
-
 function tabStyle(active: boolean) {
   return {
     border: active ? '1px solid rgba(95,213,95,.5)' : '1px solid rgba(255,255,255,.08)',
@@ -32,7 +85,6 @@ function tabStyle(active: boolean) {
     color: active ? '#7fe877' : '#9aa39a',
   };
 }
-
 function CheckRow({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
   const c = chk(on);
   return (
@@ -48,43 +100,40 @@ function CheckRow({ label, on, onClick }: { label: string; on: boolean; onClick:
 
 export function MarketplacePage() {
   const { mp, setMpType, toggleExt, setStat, setColor, toggleKnife, setMpSearch, toggleAllKnives, flash } = useStore();
-
   const [sortBy, setSortBy] = useState<'lowest_price' | 'highest_price' | 'lowest_float' | 'highest_float'>('lowest_price');
-  const [selectedItem, setSelectedItem] = useState<NormalizedSkin | null>(null);
+  const [selectedItem, setSelectedItem] = useState<LocalSkin | null>(null);
+  const [showSort, setShowSort] = useState(false);
 
-  const { data: listings, loading, error, refetch } = useListings({
-    limit: 48,
-    type: 'buy_now',
-    category: mp.type ? CAT_MAP[mp.type] : undefined,
-    sort_by: sortBy,
-    ...(mp.stat === 'yes' ? { market_hash_name: 'StatTrak' } : {}),
-  });
-
-  const filtered = listings.filter(it => {
-    if (mp.q) {
-      const q = mp.q.toLowerCase();
-      if (!(it.name + ' ' + it.skin).toLowerCase().includes(q)) return false;
-    }
-    return true;
-  });
+  const filtered = useMemo(() => {
+    let list = ALL_SKINS;
+    if (mp.type) list = list.filter(it => it.cat === mp.type);
+    if (mp.exts.length) list = list.filter(it => mp.exts.includes(it.wear));
+    if (mp.stat === 'yes') list = list.filter(it => it.isStatTrak);
+    if (mp.stat === 'no') list = list.filter(it => !it.isStatTrak);
+    if (mp.q) { const q = mp.q.toLowerCase(); list = list.filter(it => (it.name + ' ' + it.skin).toLowerCase().includes(q)); }
+    if (mp.type === 'Knifes' && mp.knives.length) list = list.filter(it => mp.knives.some(k => it.name.includes(k.replace(' Knife', ''))));
+    list = [...list].sort((a, b) => {
+      if (sortBy === 'lowest_price') return a.price - b.price;
+      if (sortBy === 'highest_price') return b.price - a.price;
+      if (sortBy === 'lowest_float') return a.float - b.float;
+      return b.float - a.float;
+    });
+    return list;
+  }, [mp, sortBy]);
 
   const sortLabel: Record<string, string> = {
-    lowest_price: 'Price: Low to High',
-    highest_price: 'Price: High to Low',
-    lowest_float: 'Float: Low to High',
-    highest_float: 'Float: High to Low',
+    lowest_price: 'Price: Low to High', highest_price: 'Price: High to Low',
+    lowest_float: 'Float: Low to High', highest_float: 'Float: High to Low',
   };
   const sortOptions = Object.keys(sortLabel) as Array<keyof typeof sortLabel>;
-  const [showSort, setShowSort] = useState(false);
 
   return (
     <div>
-      {/* Banner */}
       <div style={{ border: '1px solid rgba(95,213,95,.18)', borderRadius: 16, padding: '30px 32px', marginBottom: 24,
         background: 'radial-gradient(ellipse at 30% top,rgba(95,213,95,.14),#0a0d09 70%)' }}>
         <h1 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 26, margin: '0 0 6px',
           display: 'flex', alignItems: 'center', gap: 10 }}>🛍️ Marketplace</h1>
-        <p style={{ margin: 0, color: '#9aa39a', fontSize: 14 }}>Live CS2 skins from CSFloat — buy now listings</p>
+        <p style={{ margin: 0, color: '#9aa39a', fontSize: 14 }}>CS2 skins — browse and trade</p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 20, alignItems: 'start' }}>
@@ -143,7 +192,6 @@ export function MarketplacePage() {
               <input value={mp.q} onChange={e => setMpSearch(e.target.value)} placeholder="Search items..."
                 style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#e8ece8', fontFamily: 'var(--font-outfit)', fontSize: 14 }} />
             </div>
-            {/* Sort */}
             <div style={{ position: 'relative' }}>
               <div onClick={() => setShowSort(s => !s)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#0e120e', border: '1px solid rgba(255,255,255,.08)', borderRadius: 11, padding: '12px 16px', color: '#9aa39a', fontSize: 14, cursor: 'pointer' }}>
                 <span style={{ color: '#e8ece8' }}>{sortLabel[sortBy]}</span> ◂
@@ -160,21 +208,17 @@ export function MarketplacePage() {
                 </div>
               )}
             </div>
-            <button onClick={refetch} style={{ background: '#0e120e', border: '1px solid rgba(255,255,255,.08)', borderRadius: 11, padding: '12px 16px', color: '#9aa39a', fontSize: 14, cursor: 'pointer' }}>↻ Refresh</button>
           </div>
 
           {/* Weapon tabs */}
           <div style={{ display: 'flex', gap: 9, marginBottom: 18, overflowX: 'auto', paddingBottom: 6 }}>
             <span onClick={() => setMpType('')} style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 10, fontSize: 13.5, fontWeight: 500, cursor: 'pointer', ...tabStyle(!mp.type) }}>All</span>
-            {MP_CATS.map(([label, icon]) => {
-              const a = mp.type === label;
-              return (
-                <span key={label} onClick={() => setMpType(label)}
-                  style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 10, fontSize: 13.5, fontWeight: 500, cursor: 'pointer', ...tabStyle(a) }}>
-                  <span style={{ fontSize: 14 }}>{icon}</span>{label}
-                </span>
-              );
-            })}
+            {MP_CATS.map(([label, icon]) => (
+              <span key={label} onClick={() => setMpType(label)}
+                style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 10, fontSize: 13.5, fontWeight: 500, cursor: 'pointer', ...tabStyle(mp.type === label) }}>
+                <span style={{ fontSize: 14 }}>{icon}</span>{label}
+              </span>
+            ))}
           </div>
 
           {/* Knife subtypes */}
@@ -198,58 +242,39 @@ export function MarketplacePage() {
             </div>
           )}
 
-          {/* States */}
-          {loading && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 14 }}>
-              {Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} style={{ height: 220, borderRadius: 13, background: '#0b0e0a', border: '1px solid rgba(255,255,255,.05)', animation: 'pulse 1.4s ease-in-out infinite' }} />
-              ))}
-            </div>
-          )}
-
-          {error && (
-            <div style={{ textAlign: 'center', padding: 60 }}>
-              <div style={{ color: '#eb4b4b', marginBottom: 12 }}>Failed to load listings</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#6b746b', marginBottom: 16 }}>{error}</div>
-              <button onClick={refetch} style={{ background: '#1c241b', border: '1px solid rgba(95,213,95,.3)', borderRadius: 10, padding: '10px 24px', color: '#7fe877', cursor: 'pointer' }}>Retry</button>
-            </div>
-          )}
-
-          {/* Items grid */}
-          {!loading && !error && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 14 }}>
-              {filtered.map(it => (
-                <div key={it.id} onClick={() => setSelectedItem(it)}
-                  style={{ position: 'relative', background: '#0b0e0a', border: `1px solid ${it.color}`,
-                    borderRadius: 13, padding: '14px 12px 13px', cursor: 'pointer', overflow: 'hidden',
-                    transition: 'transform .14s, box-shadow .14s' }}
-                  onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'translateY(-4px)'; el.style.boxShadow = `0 12px 26px rgba(0,0,0,.45)`; }}
-                  onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = ''; el.style.boxShadow = ''; }}>
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: it.color }} />
-                  {it.isStatTrak && (
-                    <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(207,134,34,.9)', borderRadius: 5, padding: '2px 6px', fontSize: 9, fontWeight: 700, color: '#fff' }}>ST</div>
-                  )}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 118, margin: '8px 0 10px' }}>
-                    <img src={it.imageUrl} alt={it.fullName}
-                      style={{ maxHeight: 110, maxWidth: '100%', objectFit: 'contain', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,.6))' }}
-                      onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = '0.3'; }} />
-                  </div>
-                  <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a' }}>{it.name}</div>
-                  <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 12, color: it.color, lineHeight: 1.3 }}>
-                    {it.skin} <span style={{ fontSize: 9, color: '#8a928a', fontWeight: 400 }}>{it.wear?.slice(0, 2)}</span>
-                  </div>
-                  <div style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 10, color: '#6b746b', marginTop: 2 }}>
-                    {it.float != null ? it.float.toFixed(4) : '—'}
-                  </div>
-                  <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 6, fontSize: 13, color: '#cfd4cf', fontWeight: 600 }}>
-                    <span style={{ color: '#3ad48f', fontWeight: 800, fontSize: 11 }}>$</span>{it.priceDisplay}
-                  </div>
+          {/* Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 14 }}>
+            {filtered.map(it => (
+              <div key={it.id} onClick={() => setSelectedItem(it)}
+                style={{ position: 'relative', background: '#0b0e0a', border: `1px solid ${it.color}`,
+                  borderRadius: 13, padding: '14px 12px 13px', cursor: 'pointer', overflow: 'hidden',
+                  transition: 'transform .14s, box-shadow .14s' }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'translateY(-4px)'; el.style.boxShadow = '0 12px 26px rgba(0,0,0,.45)'; }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = ''; el.style.boxShadow = ''; }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: it.color }} />
+                {it.isStatTrak && (
+                  <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(207,134,34,.9)', borderRadius: 5, padding: '2px 6px', fontSize: 9, fontWeight: 700, color: '#fff' }}>ST</div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 118, margin: '8px 0 10px' }}>
+                  <img src={it.imageUrl} alt={it.fullName}
+                    style={{ maxHeight: 110, maxWidth: '100%', objectFit: 'contain', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,.6))' }}
+                    onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = '0.3'; }} />
                 </div>
-              ))}
-            </div>
-          )}
+                <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a' }}>{it.name}</div>
+                <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 12, color: it.color, lineHeight: 1.3 }}>
+                  {it.skin} <span style={{ fontSize: 9, color: '#8a928a', fontWeight: 400 }}>{it.wearShort}</span>
+                </div>
+                <div style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 10, color: '#6b746b', marginTop: 2 }}>
+                  {it.float.toFixed(4)}
+                </div>
+                <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 6, fontSize: 13, color: '#cfd4cf', fontWeight: 600 }}>
+                  <span style={{ color: '#3ad48f', fontWeight: 800, fontSize: 11 }}>$</span>{it.priceDisplay}
+                </div>
+              </div>
+            ))}
+          </div>
 
-          {!loading && !error && filtered.length === 0 && (
+          {filtered.length === 0 && (
             <div style={{ textAlign: 'center', color: '#6b746b', padding: '60px 20px', fontSize: 14 }}>
               No items found. Try adjusting your filters.
             </div>
@@ -257,13 +282,12 @@ export function MarketplacePage() {
         </div>
       </div>
 
-      {/* Item detail modal */}
       {selectedItem && <ItemModal item={selectedItem} onClose={() => setSelectedItem(null)} />}
     </div>
   );
 }
 
-function ItemModal({ item, onClose }: { item: NormalizedSkin; onClose: () => void }) {
+function ItemModal({ item, onClose }: { item: LocalSkin; onClose: () => void }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(4,6,4,.88)', backdropFilter: 'blur(7px)',
       display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '80px 24px 40px', overflowY: 'auto' }}>
@@ -278,7 +302,6 @@ function ItemModal({ item, onClose }: { item: NormalizedSkin; onClose: () => voi
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 16 }}>
-          {/* Image panel */}
           <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', minHeight: 320,
             background: `radial-gradient(ellipse at center,${item.color}22,#0a0d10 72%)`,
             border: '1px solid rgba(255,255,255,.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -286,42 +309,21 @@ function ItemModal({ item, onClose }: { item: NormalizedSkin; onClose: () => voi
             <img src={item.imageUrl} alt={item.fullName} style={{ maxHeight: 240, maxWidth: '80%', objectFit: 'contain', filter: `drop-shadow(0 0 30px ${item.color}88)` }} />
           </div>
 
-          {/* Details panel */}
           <div style={{ background: '#13171d', borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {/* Float bar */}
             <div style={{ position: 'relative', height: 6, borderRadius: 4, marginBottom: 16,
               background: 'linear-gradient(90deg,#3ad44e,#9bd24a 30%,#e0c23a 55%,#e08a3a 75%,#e34a4a)' }}>
-              <div style={{ position: 'absolute', top: -3, left: `${(item.float ?? 0.5) * 100}%`, width: 12, height: 12, borderRadius: '50%', background: '#fff', transform: 'translateX(-50%)', border: '2px solid #1a1f26' }} />
+              <div style={{ position: 'absolute', top: -3, left: `${item.float * 100}%`, width: 12, height: 12, borderRadius: '50%', background: '#fff', transform: 'translateX(-50%)', border: '2px solid #1a1f26' }} />
             </div>
-
-            {item.float != null && <DetailRow label="Float" value={item.float.toFixed(8)} mono />}
+            <DetailRow label="Float" value={item.float.toFixed(8)} mono />
             <DetailRow label="Rarity" value={item.rarityName} color={item.color} />
             <DetailRow label="Wear" value={item.wear} />
-            {item.phase && <DetailRow label="Phase" value={item.phase} color={item.color} />}
-            {item.collection && <DetailRow label="Collection" value={item.collection} />}
-
-            {/* Stickers */}
-            {item.stickers.length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 12, color: '#9aa39a', marginBottom: 8 }}>Stickers</div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {item.stickers.sort((a, b) => a.slot - b.slot).map((s, i) => (
-                    <div key={i} title={s.name} style={{ width: 44, height: 44, borderRadius: 8, background: '#0e120e', border: '1px solid rgba(255,255,255,.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                      <img src={s.iconUrl} alt={s.name} style={{ width: 36, height: 36, objectFit: 'contain' }} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div style={{ flex: 1 }} />
             <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#0a0d12', border: '1px solid rgba(255,255,255,.08)', borderRadius: 11, padding: 13, fontWeight: 700, fontSize: 18 }}>
-              <span style={{ color: '#3ad48f', fontWeight: 800 }}>$</span>{item.priceDisplay}
+              <CoinIcon size={18} />{item.priceDisplay}
             </div>
-            <a href={`https://csfloat.com/item/${item.id}`} target="_blank" rel="noopener noreferrer"
-              style={{ display: 'block', textAlign: 'center', marginTop: 10, fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 15, color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)', borderRadius: 11, padding: 14, textDecoration: 'none' }}>
-              Buy on CSFloat ↗
-            </a>
+            <button onClick={() => {}} style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: 10, fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 15, color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)', borderRadius: 11, padding: 14, border: 'none', cursor: 'pointer' }}>
+              Buy Now
+            </button>
           </div>
         </div>
       </div>
