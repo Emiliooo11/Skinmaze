@@ -3,20 +3,23 @@ import { useState, useEffect } from 'react';
 
 interface Props {
   marketName: string;
+  imageUrl?: string;   // pass directly to skip API fetch
   alt?: string;
   size?: number;
   style?: React.CSSProperties;
   glowColor?: string;
 }
 
-// Simple in-memory cache so we don't re-fetch the same skin repeatedly
+// In-memory cache for admin-searched skins (not in POOL)
 const imgCache: Record<string, string> = {};
 
-export function SkinImage({ marketName, alt, size = 100, style, glowColor }: Props) {
-  const [src, setSrc] = useState<string | null>(imgCache[marketName] ?? null);
+export function SkinImage({ marketName, imageUrl: staticUrl, alt, size = 100, style, glowColor }: Props) {
+  const [src, setSrc] = useState<string | null>(staticUrl ?? imgCache[marketName] ?? null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
+    // If a static URL was passed, use it immediately — no API call
+    if (staticUrl) { setSrc(staticUrl); return; }
     if (imgCache[marketName]) { setSrc(imgCache[marketName]); return; }
     fetch(`/api/skin-image?name=${encodeURIComponent(marketName)}`)
       .then(r => r.ok ? r.json() : null)
@@ -25,7 +28,7 @@ export function SkinImage({ marketName, alt, size = 100, style, glowColor }: Pro
         else setFailed(true);
       })
       .catch(() => setFailed(true));
-  }, [marketName]);
+  }, [marketName, staticUrl]);
 
   const boxStyle: React.CSSProperties = {
     width: size, height: size,

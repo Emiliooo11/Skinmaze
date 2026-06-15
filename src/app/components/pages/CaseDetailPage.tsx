@@ -114,7 +114,7 @@ export function CaseDetailPage() {
             <div key={i} style={{ flex: '0 0 160px', height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ width: 150, height: 170, borderRadius: 14, background: `radial-gradient(circle at 50% 56%,${t.color}30,transparent 66%)`,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, border: `1px solid ${t.color}22` }}>
-                <SkinImage marketName={t.marketName} size={90} glowColor={t.color} />
+                <SkinImage marketName={t.marketName} imageUrl={t.imageUrl} size={90} glowColor={t.color} />
                 <span style={{ fontSize: 10, fontWeight: 600, color: t.color }}>{t.skin}</span>
               </div>
             </div>
@@ -181,7 +181,7 @@ export function CaseDetailPage() {
             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '70%', height: 34,
               background: `radial-gradient(ellipse at center,${d.color},transparent 70%)`, opacity: .5 }} />
             <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a', position: 'relative' }}>{d.pct}%</div>
-            <SkinImage marketName={d.marketName} size={90} glowColor={d.color} style={{ margin: '4px auto' }} />
+            <SkinImage marketName={d.marketName} imageUrl={d.imageUrl} size={90} glowColor={d.color} style={{ margin: '4px auto' }} />
             <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a' }}>{d.w}</div>
             <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 13, color: d.color }}>{d.skin}</div>
             <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 5, fontSize: 13, color: '#cfd4cf' }}>
@@ -200,7 +200,7 @@ export function CaseDetailPage() {
             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '70%', height: 34,
               background: `radial-gradient(ellipse at center,${d.color},transparent 70%)`, opacity: .45 }} />
             <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a', position: 'relative' }}>{d.pct}%</div>
-            <SkinImage marketName={d.marketName} size={90} glowColor={d.color} style={{ margin: '4px auto' }} />
+            <SkinImage marketName={d.marketName} imageUrl={d.imageUrl} size={90} glowColor={d.color} style={{ margin: '4px auto' }} />
             <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a' }}>{d.w}</div>
             <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 13, color: d.color }}>{d.skin}</div>
             <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 5, fontSize: 13, color: '#cfd4cf' }}>
@@ -228,7 +228,7 @@ export function CaseDetailPage() {
               <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 20, marginBottom: 18, color: won.color }}>You unboxed!</div>
               <div style={{ width: 260, borderRadius: 16, background: '#0c100c', border: `1px solid ${won.color}`,
                 boxShadow: `0 0 50px -6px ${won.color}`, padding: 18, textAlign: 'center' }}>
-                <SkinImage marketName={won.marketName} size={160} glowColor={won.color} style={{ margin: '0 auto 14px' }} />
+                <SkinImage marketName={won.marketName} imageUrl={won.imageUrl} size={160} glowColor={won.color} style={{ margin: '0 auto 14px' }} />
                 <div style={{ fontSize: 13, color: '#9aa39a' }}>{won.w}</div>
                 <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 18, color: won.color, margin: '2px 0 4px' }}>{won.skin}</div>
                 <div style={{ fontSize: 12, color: '#8a928a', marginBottom: 10 }}>Factory New</div>

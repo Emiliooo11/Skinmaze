@@ -21,6 +21,7 @@ export interface ReelItem {
   color: string;
   price: string;
   marketName: string;
+  imageUrl?: string;
 }
 
 export interface CaseItem {
@@ -48,33 +49,35 @@ export const RAR: Record<Rarity, { c: string; n: string }> = {
   gold:   { c: '#e6c33e', n: 'Exceedingly Rare' },
 };
 
-export const POOL: Array<{ w: string; skin: string; rar: Rarity; cat: Category; marketName: string }> = [
-  { w: 'AWP',                  skin: 'Dragon Lore',      rar: 'gold',   cat: 'Sniper',     marketName: 'AWP | Dragon Lore (Factory New)' },
-  { w: '★ Karambit',          skin: 'Fade',             rar: 'gold',   cat: 'Knifes',     marketName: '★ Karambit | Fade (Factory New)' },
-  { w: '★ Butterfly Knife',   skin: 'Slaughter',        rar: 'gold',   cat: 'Knifes',     marketName: '★ Butterfly Knife | Slaughter (Factory New)' },
-  { w: '★ Bayonet',           skin: 'Doppler',          rar: 'gold',   cat: 'Knifes',     marketName: '★ Bayonet | Doppler (Factory New)' },
-  { w: '★ Sport Gloves',      skin: "Pandora's Box",    rar: 'gold',   cat: 'Gloves',     marketName: "★ Sport Gloves | Pandora's Box (Field-Tested)" },
-  { w: 'M4A4',                skin: 'Howl',             rar: 'red',    cat: 'Rifle',      marketName: 'M4A4 | Howl (Field-Tested)' },
-  { w: 'AWP',                  skin: 'Asiimov',          rar: 'red',    cat: 'Sniper',     marketName: 'AWP | Asiimov (Field-Tested)' },
-  { w: 'Desert Eagle',         skin: 'Blaze',            rar: 'red',    cat: 'Pistol',     marketName: 'Desert Eagle | Blaze (Factory New)' },
-  { w: 'USP-S',               skin: 'Kill Confirmed',   rar: 'red',    cat: 'Pistol',     marketName: 'USP-S | Kill Confirmed (Field-Tested)' },
-  { w: '★ Specialist Gloves', skin: 'Crimson Kimono',   rar: 'red',    cat: 'Gloves',     marketName: '★ Specialist Gloves | Crimson Kimono (Well-Worn)' },
-  { w: 'AK-47',               skin: 'Vulcan',           rar: 'pink',   cat: 'Rifle',      marketName: 'AK-47 | Vulcan (Field-Tested)' },
-  { w: 'M4A1-S',              skin: 'Hyper Beast',      rar: 'pink',   cat: 'Rifle',      marketName: 'M4A1-S | Hyper Beast (Field-Tested)' },
-  { w: 'AWP',                  skin: 'Hyper Beast',      rar: 'pink',   cat: 'Sniper',     marketName: 'AWP | Hyper Beast (Field-Tested)' },
-  { w: '★ Driver Gloves',     skin: 'King Snake',       rar: 'pink',   cat: 'Gloves',     marketName: '★ Driver Gloves | King Snake (Field-Tested)' },
-  { w: 'AK-47',               skin: 'Redline',          rar: 'pink',   cat: 'Rifle',      marketName: 'AK-47 | Redline (Field-Tested)' },
-  { w: 'AK-47',               skin: 'Slate',            rar: 'purple', cat: 'Rifle',      marketName: 'AK-47 | Slate (Factory New)' },
-  { w: 'Glock-18',            skin: 'Water Elemental',  rar: 'purple', cat: 'Pistol',     marketName: 'Glock-18 | Water Elemental (Field-Tested)' },
-  { w: 'P250',                skin: 'Asiimov',          rar: 'purple', cat: 'Pistol',     marketName: 'P250 | Asiimov (Field-Tested)' },
-  { w: 'MP9',                 skin: 'Rose Iron',        rar: 'purple', cat: 'SMG',        marketName: 'MP9 | Rose Iron (Factory New)' },
-  { w: 'MAC-10',              skin: 'Neon Rider',       rar: 'purple', cat: 'SMG',        marketName: 'MAC-10 | Neon Rider (Field-Tested)' },
-  { w: 'Five-SeveN',          skin: 'Case Hardened',    rar: 'blue',   cat: 'Pistol',     marketName: 'Five-SeveN | Case Hardened (Field-Tested)' },
-  { w: 'MP9',                 skin: 'Hot Rod',          rar: 'blue',   cat: 'SMG',        marketName: 'MP9 | Hot Rod (Factory New)' },
-  { w: 'Nova',                skin: 'Hyper Beast',      rar: 'blue',   cat: 'Shotgun',    marketName: 'Nova | Hyper Beast (Field-Tested)' },
-  { w: 'XM1014',              skin: 'Tranquility',      rar: 'blue',   cat: 'Shotgun',    marketName: 'XM1014 | Tranquility (Factory New)' },
-  { w: 'Negev',               skin: 'Power Loader',     rar: 'blue',   cat: 'Machinegun', marketName: 'Negev | Power Loader (Factory New)' },
-  { w: 'M249',                skin: 'Aztec',            rar: 'blue',   cat: 'Machinegun', marketName: 'M249 | Aztec (Field-Tested)' },
+const STEAM = (icon: string) => `https://community.fastly.steamstatic.com/economy/image/${icon}`;
+
+export const POOL: Array<{ w: string; skin: string; rar: Rarity; cat: Category; marketName: string; imageUrl: string }> = [
+  { w: 'AWP',                  skin: 'Dragon Lore',      rar: 'gold',   cat: 'Sniper',     marketName: 'AWP | Dragon Lore (Factory New)',                         imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_jdk4veqYaF7IfysCnWRxuF4j-B-Xxa_nBovp3Pdwtj9cC_GaAd0DZdwQu9fuhS4kNy0NePntVTbjYpCyyT_3CgY5i9j_a9cBkcCWUKV') },
+  { w: '★ Karambit',          skin: 'Fade',             rar: 'gold',   cat: 'Knifes',     marketName: '★ Karambit | Fade (Factory New)',                         imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL6kJ_m-B1Q7uCvZaZkNM-SD1iWwOpzj-1gSCGn20tztm_UyIn_JHKUbgYlWMcmQ-ZcskSwldS0MOnntAfd3YlMzH35jntXrnE8SOGRGG8') },
+  { w: '★ Butterfly Knife',   skin: 'Slaughter',        rar: 'gold',   cat: 'Knifes',     marketName: '★ Butterfly Knife | Slaughter (Factory New)',             imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL6kJ_m-B1Z-ua6bbZrLOmsD2qv2-t0ouBWQyC0nQlp4G_dmdauIC_DPQBzDpclRLINsEXsx92yP7jq7gXd2t1NzCT3iCwc6TErvbhfNpboFw') },
+  { w: '★ Bayonet',           skin: 'Doppler',          rar: 'gold',   cat: 'Knifes',     marketName: '★ Bayonet | Doppler (Factory New)',                       imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLzn4_v8ydP0POjV7Z4IumsA2aCw-JzuftsSxa_nBovp3PWnomsdn2QPVN0D5UiEOUP50LtltTvY-Ll4g3YjItFmSv-2i9A6X4-_a9cBu2YVmHc') },
+  { w: '★ Sport Gloves',      skin: "Pandora's Box",    rar: 'gold',   cat: 'Gloves',     marketName: "★ Sport Gloves | Pandora's Box (Field-Tested)",           imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Tk5UvzWCL2kpn2-DFk_OKherB0H-CGHHecxNF7teVgWiT9wU4jsmyDyt74dn-WOwUhApchQLYD4Rm4ktDlMbzjs1DajtlCmy6vijQJsHhHS4AXoA') },
+  { w: 'M4A4',                skin: 'Howl',             rar: 'red',    cat: 'Rifle',      marketName: 'M4A4 | Howl (Field-Tested)',                              imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwiFO0P_6afVSKP-EAm6extF7teVgWiT9wh5_5zyAwo6oeSrDawUkCMN0QbEM5BO-wNazMe3qsgHZg4wQyy-t2jQJsHi3nDJ37A') },
+  { w: 'AWP',                  skin: 'Asiimov',          rar: 'red',    cat: 'Sniper',     marketName: 'AWP | Asiimov (Field-Tested)',                            imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_jdk7uW-V6V-Kf2cGFidxOp_pewnF3nhxEt0sGnSzN76dH3GOg9xC8FyEORftRe-x9PuYurq71bW3d8UnjK-0H0YSTpMGQ') },
+  { w: 'Desert Eagle',         skin: 'Blaze',            rar: 'red',    cat: 'Pistol',     marketName: 'Desert Eagle | Blaze (Factory New)',                      imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL1m5fn8Sdk7vORbqhsLfWAMWuZxuZi_uI_TX6wxxkjsGXXnImsJ37COlUoWcByEOMOtxa5kdXmNu3htVPZjN1bjXKpkHLRfQU') },
+  { w: 'USP-S',               skin: 'Kill Confirmed',   rar: 'red',    cat: 'Pistol',     marketName: 'USP-S | Kill Confirmed (Field-Tested)',                   imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLkjYbf7itX6vytbbZSI-WsG3SA_uV_vO1WTCa9kxQ1vjiBpYL8JSLSMxghCMEjEeNe5hHpw9zhYuOz5VfcitpBmyqt3X9O6itrsesFUfYmrKzTkUifZqPQtnZK') },
+  { w: '★ Specialist Gloves', skin: 'Crimson Kimono',   rar: 'red',    cat: 'Gloves',     marketName: '★ Specialist Gloves | Crimson Kimono (Well-Worn)',        imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Tk71ruQBH4jYLf-i5U-fe9V7d9JfOaD2uZ0vpJu-hkQCe8qhkusjCKlIvqHjnCOml9X8YpALoUt0buw9XvZu3n5QXcjt8Rz374hitJ7y1ut7wGBPIn_KHX2g-TZeU65Y5DeqiDpqFsBg') },
+  { w: 'AK-47',               skin: 'Vulcan',           rar: 'pink',   cat: 'Rifle',      marketName: 'AK-47 | Vulcan (Field-Tested)',                           imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wiFO0POlPPNSMuWRDGKC_uNztOh8QmeylBh1426Gz437JyrEOA5zD5N0Q-MOsEG4moe2Yrjr5w2Pid8Rnir3kGoXuUSY1H7U') },
+  { w: 'M4A1-S',              skin: 'Hyper Beast',      rar: 'pink',   cat: 'Rifle',      marketName: 'M4A1-S | Hyper Beast (Field-Tested)',                    imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwjFS4_ega6F_H_OGMWrEwL9JuPh5SjuMlxgmoCm6l4r9KD7KcA50WcR0R7NctBm_k9fgN7nn4FGMitpCxH-vjikc6Cs4t-5TVaMgr_bJz1aWEz9VGgc') },
+  { w: 'AWP',                  skin: 'Hyper Beast',      rar: 'pink',   cat: 'Sniper',     marketName: 'AWP | Hyper Beast (Field-Tested)',                        imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_jdk7uW-V6x0MPWBMWWVwP1ij-xsSyCmmFMj62Tcwt-gJC_BbwNyDZokQu8I4BK6wdazMuq35AbW3YIWmy_4h3tO8G81tKCz9TDP') },
+  { w: '★ Driver Gloves',     skin: 'King Snake',       rar: 'pink',   cat: 'Gloves',     marketName: '★ Driver Gloves | King Snake (Field-Tested)',             imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5T441rsfhr9kYDl7h1I4_utY5t-LvGYC3SbyOBJp-lgWyyMmBgjuiiI1Nv_d33BaQUjA8MmF-QCskbswdTvY7_q7leNiN0Rnyz-3y4f6HxvsL4cEf1yOUfFUFk') },
+  { w: 'AK-47',               skin: 'Redline',          rar: 'pink',   cat: 'Rifle',      marketName: 'AK-47 | Redline (Field-Tested)',                          imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wiFO0POlPPNSI_-RHGavzOtyufRkASq2lkxx4W-HnNyqJC3FZwYoC5p0Q7FfthW6wdWxPu-371Pdit5HnyXgznQeHYY5wyA') },
+  { w: 'AK-47',               skin: 'Slate',            rar: 'purple', cat: 'Rifle',      marketName: 'AK-47 | Slate (Factory New)',                             imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wiVI0POlPPNSMOKcCGKD0ud5vuBlcCW6khUz_W3Sytb4cCqTOFUpWJtzTOUD5hPsw9a0Yrnrs1SK3ooXzy6shilM5311o7FVYrIufmI') },
+  { w: 'Glock-18',            skin: 'Water Elemental',  rar: 'purple', cat: 'Pistol',     marketName: 'Glock-18 | Water Elemental (Field-Tested)',               imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL2kpnj9h1Y-s2pZKtuK72fB3aFxP11te99cCS2kRQyvnOGnNiodi6RPwEkWJV2EeFbtBTqkoDjMezk5wbZj4wRzi_2iShIuyls_a9cBjdLVuOU') },
+  { w: 'P250',                skin: 'Asiimov',          rar: 'purple', cat: 'Pistol',     marketName: 'P250 | Asiimov (Field-Tested)',                           imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLhzMOwwiFO0OL8PfRSIeOaB2qf19F7teVgWiT9wxx36mWHzIuseXnCOlUgXsclQONf5Bi4x4bhNru34VPejdgXyS3-3DQJsHj2UM_3gw') },
+  { w: 'MP9',                 skin: 'Rose Iron',        rar: 'purple', cat: 'SMG',        marketName: 'MP9 | Rose Iron (Factory New)',                           imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8js_f_C9k-_qheqp0H-KcHWKvzP4vj-1gSCGn20h0423Wn9qoJH6QOwNxXpRxQOQLtEHumtTvP-i05wyMjN5Hz3qtiy1XrnE8Sl7QOgI') },
+  { w: 'MAC-10',              skin: 'Neon Rider',       rar: 'purple', cat: 'SMG',        marketName: 'MAC-10 | Neon Rider (Field-Tested)',                      imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8n5WxrR1Y-s2jaac8cM-dC2ie0-dytfNWQiy3nAgq_W-An9yvIi2WbgZzA5RwF-QL5BDumoC0NL_kswCK2YIQmymt2y0Y5nl1o7FV43jaksE') },
+  { w: 'Five-SeveN',          skin: 'Case Hardened',    rar: 'blue',   cat: 'Pistol',     marketName: 'Five-SeveN | Case Hardened (Field-Tested)',               imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL3l4Dl7idN6vyRabVSL_mfC2OvzOtyufRkAS3hlkxz5mSHzYmrd3KSPwMiWcAiFuBYsRS-lYbiNO7m5Fbej4tAzCTgznQeYJ59fyc') },
+  { w: 'MP9',                 skin: 'Hot Rod',          rar: 'blue',   cat: 'SMG',        marketName: 'MP9 | Hot Rod (Factory New)',                             imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8js_f_Cxk_feqV6hkJ_iHQD7Cl7ou5rlsGyi2wBgh4WyDytmqcC6fbQAhC8chEeZZtRLrw4LlNLz8p1uJeM3XA-E') },
+  { w: 'Nova',                skin: 'Hyper Beast',      rar: 'blue',   cat: 'Shotgun',    marketName: 'Nova | Hyper Beast (Field-Tested)',                       imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL_kYDhwiFO0PyhfqVSKOmDC3WSxO9lpN5kSi26gBBp6juAmImgIyqWPAQnA5JzTO4C4EHqwNHiZe_i4wbY3otBziStjS5J6zErvbi3rfP3KQ') },
+  { w: 'XM1014',              skin: 'Tranquility',      rar: 'blue',   cat: 'Shotgun',    marketName: 'XM1014 | Tranquility (Factory New)',                      imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLpk8ewrHZk7OeRcKk8cKHHMWSR0-disfJWQyC0nQlp5zjWnNigIC-falMlWMN2F-cP5Ba-xoXlMri0swTZg41EyX34jS1LuDErvbgNI5zBZg') },
+  { w: 'Negev',               skin: 'Power Loader',     rar: 'blue',   cat: 'Machinegun', marketName: 'Negev | Power Loader (Factory New)',                      imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL_m5Hl6x1Y-s2gbaNoNs-aA3eRwvpJvOhuRz39lE914j-HyYmscHLBZ1J1X5NyEbYI5Be8k4DmYuzh4AGIgo0QzSqs3TQJsHgPf9N5RQ') },
+  { w: 'M249',                skin: 'Aztec',            rar: 'blue',   cat: 'Machinegun', marketName: 'M249 | Aztec (Field-Tested)',                             imageUrl: STEAM('i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8zMK5wiNK0P_8PP1SIeqHC2SvzOtyufRkAXDmlkQktTvUydysdH-RaFB0W5V0QrYOtkW7ldayN-jr5wffj4wWyyzgznQe5C6Zauo') },
 ];
 
 export const EXTS = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Battle-Scarred'];
@@ -150,7 +153,7 @@ export function randItem(): ReelItem {
   const rar = pickRar();
   const pool = POOL.filter(p => p.rar === rar);
   const p = pool[Math.floor(Math.random() * pool.length)] || POOL[0];
-  return { w: p.w, skin: p.skin, rar, color: RAR[rar].c, price: fmt(priceFor(rar)), marketName: p.marketName };
+  return { w: p.w, skin: p.skin, rar, color: RAR[rar].c, price: fmt(priceFor(rar)), marketName: p.marketName, imageUrl: p.imageUrl };
 }
 
 export function buildCasesAll(): CaseItem[] {
