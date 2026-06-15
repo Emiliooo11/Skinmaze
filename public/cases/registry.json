@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "water-camo",
+      "label": "Water Camo",
+      "file": "case-water-camo.png",
+      "publicPath": "/cases/case-water-camo.png",
+      "theme": "blue",
+      "accentColor": "#4b8fff"
+    },
+    {
+      "id": "gold-tiger",
+      "label": "Gold Tiger",
+      "file": "case-gold-tiger.png",
+      "publicPath": "/cases/case-gold-tiger.png",
+      "theme": "gold",
+      "accentColor": "#e6c33e"
+    },
+    {
+      "id": "hardened",
+      "label": "Case Hardened",
+      "file": "case-hardened.png",
+      "publicPath": "/cases/case-hardened.png",
+      "theme": "purple-blue",
+      "accentColor": "#8847ff"
+    },
+    {
+      "id": "emerald",
+      "label": "Emerald",
+      "file": "case-emerald.png",
+      "publicPath": "/cases/case-emerald.png",
+      "theme": "prism",
+      "accentColor": "#d32ee6"
+    },
+    {
+      "id": "jungle",
+      "label": "Jungle",
+      "file": "case-jungle.png",
+      "publicPath": "/cases/case-jungle.png",
+      "theme": "green",
+      "accentColor": "#46c041"
+    },
+    {
+      "id": "marble",
+      "label": "Marble Fade",
+      "file": "case-prism.png",
+      "publicPath": "/cases/case-prism.png",
+      "theme": "jungle",
+      "accentColor": "#3ad48f"
+    }
+  ]
+}
