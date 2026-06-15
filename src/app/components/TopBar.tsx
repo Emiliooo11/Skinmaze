@@ -32,6 +32,10 @@ export function TopBar() {
             fontWeight: 500, fontSize: 15, color: route === 'market' ? '#7fe877' : '#9aa39a' }}>
             <span>🎁</span> Rewards
           </div>
+          <div onClick={() => go('admin')} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+            fontWeight: 500, fontSize: 15, color: route === 'admin' ? '#7fe877' : '#9aa39a' }}>
+            <span>⚙️</span> Admin
+          </div>
         </nav>
       </div>
 

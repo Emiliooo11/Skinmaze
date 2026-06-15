@@ -9,6 +9,7 @@ import { MarketplacePage } from './components/pages/MarketplacePage';
 import { CaseDetailPage } from './components/pages/CaseDetailPage';
 import { ProfilePage } from './components/pages/ProfilePage';
 import { WalletPage } from './components/pages/WalletPage';
+import { AdminPage } from './components/pages/AdminPage';
 import { MarketItemModal } from './components/modals/MarketItemModal';
 import { FairnessModal } from './components/modals/FairnessModal';
 import { useStore } from './store/useStore';
@@ -28,6 +29,7 @@ export default function Page() {
         {route === 'casedetail' && <CaseDetailPage />}
         {route === 'profile' && <ProfilePage />}
         {route === 'wallet' && <WalletPage />}
+        {route === 'admin' && <AdminPage />}
       </main>
 
       <Footer />

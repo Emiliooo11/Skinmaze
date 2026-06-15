@@ -4,7 +4,7 @@ import { useStore } from '@/app/store/useStore';
 import { randItem } from '@/app/lib/data';
 import { rollToItem } from '@/app/lib/provablyFair';
 import { CoinIcon } from '../CoinIcon';
-import { Placeholder } from '../Placeholder';
+import { SkinImage } from '../SkinImage';
 
 export function CaseDetailPage() {
   const { currentCase, phase, won, reel, multiplier, setMultiplier, go, flash,
@@ -114,10 +114,7 @@ export function CaseDetailPage() {
             <div key={i} style={{ flex: '0 0 160px', height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ width: 150, height: 170, borderRadius: 14, background: `radial-gradient(circle at 50% 56%,${t.color}30,transparent 66%)`,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, border: `1px solid ${t.color}22` }}>
-                {'image' in cc && (cc as any).image
-                  ? <img src={(cc as any).image} alt={t.skin} style={{ width: 100, height: 80, objectFit: 'contain', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,.6))' }} />
-                  : <div style={{ width: 100, height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: '#5c6b5c' }}>skin</span></div>
-                }
+                <SkinImage marketName={t.marketName} size={90} glowColor={t.color} />
                 <span style={{ fontSize: 10, fontWeight: 600, color: t.color }}>{t.skin}</span>
               </div>
             </div>
@@ -184,7 +181,7 @@ export function CaseDetailPage() {
             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '70%', height: 34,
               background: `radial-gradient(ellipse at center,${d.color},transparent 70%)`, opacity: .5 }} />
             <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a', position: 'relative' }}>{d.pct}%</div>
-            <Placeholder label="skin render" height={96} style={{ margin: '8px 0 10px' }} />
+            <SkinImage marketName={d.marketName} size={90} glowColor={d.color} style={{ margin: '4px auto' }} />
             <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a' }}>{d.w}</div>
             <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 13, color: d.color }}>{d.skin}</div>
             <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 5, fontSize: 13, color: '#cfd4cf' }}>
@@ -203,7 +200,7 @@ export function CaseDetailPage() {
             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '70%', height: 34,
               background: `radial-gradient(ellipse at center,${d.color},transparent 70%)`, opacity: .45 }} />
             <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a', position: 'relative' }}>{d.pct}%</div>
-            <Placeholder label="skin render" height={96} style={{ margin: '8px 0 10px' }} />
+            <SkinImage marketName={d.marketName} size={90} glowColor={d.color} style={{ margin: '4px auto' }} />
             <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a' }}>{d.w}</div>
             <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 13, color: d.color }}>{d.skin}</div>
             <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 5, fontSize: 13, color: '#cfd4cf' }}>
@@ -231,12 +228,7 @@ export function CaseDetailPage() {
               <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 20, marginBottom: 18, color: won.color }}>You unboxed!</div>
               <div style={{ width: 260, borderRadius: 16, background: '#0c100c', border: `1px solid ${won.color}`,
                 boxShadow: `0 0 50px -6px ${won.color}`, padding: 18, textAlign: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 160, marginBottom: 14 }}>
-                  {'image' in cc && (cc as any).image
-                    ? <img src={(cc as any).image} alt={won.skin} style={{ height: 150, width: 'auto', objectFit: 'contain', filter: `drop-shadow(0 0 20px ${won.color})` }} />
-                    : <div style={{ height: 160, width: '100%', background: '#111', borderRadius: 10 }} />
-                  }
-                </div>
+                <SkinImage marketName={won.marketName} size={160} glowColor={won.color} style={{ margin: '0 auto 14px' }} />
                 <div style={{ fontSize: 13, color: '#9aa39a' }}>{won.w}</div>
                 <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 18, color: won.color, margin: '2px 0 4px' }}>{won.skin}</div>
                 <div style={{ fontSize: 12, color: '#8a928a', marginBottom: 10 }}>Factory New</div>

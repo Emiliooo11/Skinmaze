@@ -81,6 +81,7 @@ export async function rollToItem(
   return {
     w: p.w, skin: p.skin, rar, color: RAR[rar].c,
     price: fmt(price),
+    marketName: p.marketName,
     roll: rarityRoll,
     hash,
   };

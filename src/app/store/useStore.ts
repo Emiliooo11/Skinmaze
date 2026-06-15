@@ -12,7 +12,7 @@ export interface SpinRecord {
   price: string;
 }
 
-export type Route = 'home' | 'cases' | 'market' | 'casedetail' | 'profile' | 'wallet';
+export type Route = 'home' | 'cases' | 'market' | 'casedetail' | 'profile' | 'wallet' | 'admin';
 export type Phase = 'idle' | 'spin' | 'done';
 export type ProfileTab = 'settings' | 'security' | 'affiliate' | 'transactions';
 export type WalletTab = 'deposit' | 'withdraw';

@@ -20,6 +20,7 @@ export interface ReelItem {
   rar: Rarity;
   color: string;
   price: string;
+  marketName: string;
 }
 
 export interface CaseItem {
@@ -47,33 +48,33 @@ export const RAR: Record<Rarity, { c: string; n: string }> = {
   gold:   { c: '#e6c33e', n: 'Exceedingly Rare' },
 };
 
-export const POOL: Array<{ w: string; skin: string; rar: Rarity; cat: Category }> = [
-  { w: 'AWP',              skin: 'Dragon Lore',      rar: 'gold',   cat: 'Sniper' },
-  { w: '★ Karambit',      skin: 'Fade',             rar: 'gold',   cat: 'Knifes' },
-  { w: '★ Butterfly',     skin: 'Slaughter',        rar: 'gold',   cat: 'Knifes' },
-  { w: '★ Bayonet',       skin: 'Doppler',          rar: 'gold',   cat: 'Knifes' },
-  { w: '★ Sport Gloves',  skin: "Pandora's Box",    rar: 'gold',   cat: 'Gloves' },
-  { w: 'M4A4',            skin: 'Howl',             rar: 'red',    cat: 'Rifle' },
-  { w: 'AWP',             skin: 'Asiimov',          rar: 'red',    cat: 'Sniper' },
-  { w: 'Desert Eagle',    skin: 'Blaze',            rar: 'red',    cat: 'Pistol' },
-  { w: 'USP-S',           skin: 'Kill Confirmed',   rar: 'red',    cat: 'Pistol' },
-  { w: '★ Specialist Gloves', skin: 'Crimson Kimono', rar: 'red', cat: 'Gloves' },
-  { w: 'AK-47',           skin: 'Vulcan',           rar: 'pink',   cat: 'Rifle' },
-  { w: 'M4A1-S',          skin: 'Hyper Beast',      rar: 'pink',   cat: 'Rifle' },
-  { w: 'AWP',             skin: 'Hyper Beast',      rar: 'pink',   cat: 'Sniper' },
-  { w: '★ Driver Gloves', skin: 'King Snake',       rar: 'pink',   cat: 'Gloves' },
-  { w: 'AK-47',           skin: 'Redline',          rar: 'pink',   cat: 'Rifle' },
-  { w: 'AK-47',           skin: 'Slate',            rar: 'purple', cat: 'Rifle' },
-  { w: 'Glock-18',        skin: 'Water Elemental',  rar: 'purple', cat: 'Pistol' },
-  { w: 'P250',            skin: 'Asiimov',          rar: 'purple', cat: 'Pistol' },
-  { w: 'MP9',             skin: 'Rose Iron',        rar: 'purple', cat: 'SMG' },
-  { w: 'MAC-10',          skin: 'Neon Rider',       rar: 'purple', cat: 'SMG' },
-  { w: 'Five-SeveN',      skin: 'Case Hardened',    rar: 'blue',   cat: 'Pistol' },
-  { w: 'MP9',             skin: 'Hot Rod',          rar: 'blue',   cat: 'SMG' },
-  { w: 'Nova',            skin: 'Hyper Beast',      rar: 'blue',   cat: 'Shotgun' },
-  { w: 'XM1014',          skin: 'Tranquility',      rar: 'blue',   cat: 'Shotgun' },
-  { w: 'Negev',           skin: 'Power Loader',     rar: 'blue',   cat: 'Machinegun' },
-  { w: 'M249',            skin: 'Aztec',            rar: 'blue',   cat: 'Machinegun' },
+export const POOL: Array<{ w: string; skin: string; rar: Rarity; cat: Category; marketName: string }> = [
+  { w: 'AWP',                  skin: 'Dragon Lore',      rar: 'gold',   cat: 'Sniper',     marketName: 'AWP | Dragon Lore (Factory New)' },
+  { w: '★ Karambit',          skin: 'Fade',             rar: 'gold',   cat: 'Knifes',     marketName: '★ Karambit | Fade (Factory New)' },
+  { w: '★ Butterfly Knife',   skin: 'Slaughter',        rar: 'gold',   cat: 'Knifes',     marketName: '★ Butterfly Knife | Slaughter (Factory New)' },
+  { w: '★ Bayonet',           skin: 'Doppler',          rar: 'gold',   cat: 'Knifes',     marketName: '★ Bayonet | Doppler (Factory New)' },
+  { w: '★ Sport Gloves',      skin: "Pandora's Box",    rar: 'gold',   cat: 'Gloves',     marketName: "★ Sport Gloves | Pandora's Box (Field-Tested)" },
+  { w: 'M4A4',                skin: 'Howl',             rar: 'red',    cat: 'Rifle',      marketName: 'M4A4 | Howl (Field-Tested)' },
+  { w: 'AWP',                  skin: 'Asiimov',          rar: 'red',    cat: 'Sniper',     marketName: 'AWP | Asiimov (Field-Tested)' },
+  { w: 'Desert Eagle',         skin: 'Blaze',            rar: 'red',    cat: 'Pistol',     marketName: 'Desert Eagle | Blaze (Factory New)' },
+  { w: 'USP-S',               skin: 'Kill Confirmed',   rar: 'red',    cat: 'Pistol',     marketName: 'USP-S | Kill Confirmed (Field-Tested)' },
+  { w: '★ Specialist Gloves', skin: 'Crimson Kimono',   rar: 'red',    cat: 'Gloves',     marketName: '★ Specialist Gloves | Crimson Kimono (Well-Worn)' },
+  { w: 'AK-47',               skin: 'Vulcan',           rar: 'pink',   cat: 'Rifle',      marketName: 'AK-47 | Vulcan (Field-Tested)' },
+  { w: 'M4A1-S',              skin: 'Hyper Beast',      rar: 'pink',   cat: 'Rifle',      marketName: 'M4A1-S | Hyper Beast (Field-Tested)' },
+  { w: 'AWP',                  skin: 'Hyper Beast',      rar: 'pink',   cat: 'Sniper',     marketName: 'AWP | Hyper Beast (Field-Tested)' },
+  { w: '★ Driver Gloves',     skin: 'King Snake',       rar: 'pink',   cat: 'Gloves',     marketName: '★ Driver Gloves | King Snake (Field-Tested)' },
+  { w: 'AK-47',               skin: 'Redline',          rar: 'pink',   cat: 'Rifle',      marketName: 'AK-47 | Redline (Field-Tested)' },
+  { w: 'AK-47',               skin: 'Slate',            rar: 'purple', cat: 'Rifle',      marketName: 'AK-47 | Slate (Factory New)' },
+  { w: 'Glock-18',            skin: 'Water Elemental',  rar: 'purple', cat: 'Pistol',     marketName: 'Glock-18 | Water Elemental (Field-Tested)' },
+  { w: 'P250',                skin: 'Asiimov',          rar: 'purple', cat: 'Pistol',     marketName: 'P250 | Asiimov (Field-Tested)' },
+  { w: 'MP9',                 skin: 'Rose Iron',        rar: 'purple', cat: 'SMG',        marketName: 'MP9 | Rose Iron (Factory New)' },
+  { w: 'MAC-10',              skin: 'Neon Rider',       rar: 'purple', cat: 'SMG',        marketName: 'MAC-10 | Neon Rider (Field-Tested)' },
+  { w: 'Five-SeveN',          skin: 'Case Hardened',    rar: 'blue',   cat: 'Pistol',     marketName: 'Five-SeveN | Case Hardened (Field-Tested)' },
+  { w: 'MP9',                 skin: 'Hot Rod',          rar: 'blue',   cat: 'SMG',        marketName: 'MP9 | Hot Rod (Factory New)' },
+  { w: 'Nova',                skin: 'Hyper Beast',      rar: 'blue',   cat: 'Shotgun',    marketName: 'Nova | Hyper Beast (Field-Tested)' },
+  { w: 'XM1014',              skin: 'Tranquility',      rar: 'blue',   cat: 'Shotgun',    marketName: 'XM1014 | Tranquility (Factory New)' },
+  { w: 'Negev',               skin: 'Power Loader',     rar: 'blue',   cat: 'Machinegun', marketName: 'Negev | Power Loader (Factory New)' },
+  { w: 'M249',                skin: 'Aztec',            rar: 'blue',   cat: 'Machinegun', marketName: 'M249 | Aztec (Field-Tested)' },
 ];
 
 export const EXTS = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Battle-Scarred'];
@@ -149,7 +150,7 @@ export function randItem(): ReelItem {
   const rar = pickRar();
   const pool = POOL.filter(p => p.rar === rar);
   const p = pool[Math.floor(Math.random() * pool.length)] || POOL[0];
-  return { w: p.w, skin: p.skin, rar, color: RAR[rar].c, price: fmt(priceFor(rar)) };
+  return { w: p.w, skin: p.skin, rar, color: RAR[rar].c, price: fmt(priceFor(rar)), marketName: p.marketName };
 }
 
 export function buildCasesAll(): CaseItem[] {
