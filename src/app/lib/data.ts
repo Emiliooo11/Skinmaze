@@ -171,6 +171,42 @@ export function buildCasesAll(): CaseItem[] {
   }));
 }
 
+// Drop chances that match rollToRarity / pickRar
+export const RAR_CHANCES: Record<Rarity, number> = {
+  gold:   3,
+  red:    8,   // 11 - 3
+  pink:   14,  // 25 - 11
+  purple: 25,  // 50 - 25
+  blue:   50,  // 100 - 50
+};
+
+const RAR_ORDER: Rarity[] = ['gold', 'red', 'pink', 'purple', 'blue'];
+
+// Stable midpoint price per rarity (no Math.random — avoids hydration mismatch)
+function midPrice(rar: Rarity): number {
+  const r: Record<Rarity, [number, number]> = {
+    gold: [3200, 18000], red: [800, 4200], pink: [300, 1200], purple: [80, 420], blue: [5, 70],
+  };
+  const [lo, hi] = r[rar];
+  return usdToCoins((lo + hi) / 2);
+}
+
+/** All items in POOL sorted rarest-first, with per-item drop chance (shared equally within rarity) */
+export function buildCaseContents(): Array<{ w: string; skin: string; rar: Rarity; color: string; marketName: string; imageUrl: string; chancePct: string; price: string }> {
+  const byRarity = RAR_ORDER.map(rar => {
+    const items = POOL.filter(p => p.rar === rar);
+    const perItem = RAR_CHANCES[rar] / items.length;
+    const price = fmt(midPrice(rar));
+    return items.map(p => ({
+      w: p.w, skin: p.skin, rar, color: RAR[rar].c,
+      marketName: p.marketName, imageUrl: p.imageUrl,
+      chancePct: perItem < 1 ? perItem.toFixed(2) : perItem.toFixed(1),
+      price,
+    }));
+  });
+  return byRarity.flat();
+}
+
 export function buildMpAll(): SkinItem[] {
   const out: SkinItem[] = [];
   let id = 0;

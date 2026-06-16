@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useStore } from '@/app/store/useStore';
-import { randItem, ReelItem } from '@/app/lib/data';
+import { randItem, ReelItem, buildCaseContents } from '@/app/lib/data';
 import { usdToCoins, fmtCoins } from '@/app/lib/currency';
 import { rollToItem } from '@/app/lib/provablyFair';
 import { playSpinSound, playRevealSound } from '@/app/lib/audio';
@@ -258,11 +258,9 @@ export function CaseDetailPage() {
     };
   }, []);
 
-  const displayReel    = reel.length > 0 ? reel : buildReel(24);
-  const dropItem  = (i: number) => { const it = randItem(); return { ...it, pct: (Math.random() * 0.4 + 0.02).toFixed(2), key: 'drop' + i }; };
-  const bestDrops      = Array.from({ length: 8 }, (_, i) => dropItem(i));
-  const itemsContains  = Array.from({ length: 12 }, (_, i) => dropItem(i + 100));
-  const multBtns       = [1, 2, 3, 4];
+  const displayReel   = reel.length > 0 ? reel : buildReel(24);
+  const caseContents  = buildCaseContents();
+  const multBtns      = [1, 2, 3, 4];
 
   const totalCoinsLabel = multiplier > 1
     ? `${fmtCoins(totalPrice)} (${multiplier}×)`
@@ -415,34 +413,15 @@ export function CaseDetailPage() {
         </div>
       </div>
 
-      {/* Best Drops */}
-      <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 16, marginBottom: 16 }}>🔥 Best Drops</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 14, marginBottom: 34 }}>
-        {bestDrops.map((d) => (
-          <div key={d.key} style={{ position: 'relative', background: '#0b0e0a', border: '1px solid rgba(255,255,255,.06)',
-            borderBottom: `2px solid ${d.color}`, borderRadius: 14, padding: '14px 12px 12px', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '70%', height: 34,
-              background: `radial-gradient(ellipse at center,${d.color},transparent 70%)`, opacity: .5 }} />
-            <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a', position: 'relative' }}>{d.pct}%</div>
-            <SkinImage marketName={d.marketName} imageUrl={d.imageUrl} size={90} glowColor={d.color} style={{ margin: '4px auto' }} />
-            <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a' }}>{d.w}</div>
-            <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 13, color: d.color }}>{d.skin}</div>
-            <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 5, fontSize: 13 }}>
-              <CoinIcon size={13} />{d.price}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Items Contains */}
-      <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 16, marginBottom: 16 }}>🧰 Items Contains</div>
+      {/* Case Contains — sorted rarest first */}
+      <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 16, marginBottom: 16 }}>🧰 Case Contains</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 14 }}>
-        {itemsContains.map((d) => (
-          <div key={d.key} style={{ position: 'relative', background: '#0b0e0a', border: '1px solid rgba(255,255,255,.06)',
+        {caseContents.map((d, i) => (
+          <div key={i} style={{ position: 'relative', background: '#0b0e0a', border: '1px solid rgba(255,255,255,.06)',
             borderBottom: `2px solid ${d.color}`, borderRadius: 14, padding: '14px 12px 12px', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '70%', height: 34,
               background: `radial-gradient(ellipse at center,${d.color},transparent 70%)`, opacity: .45 }} />
-            <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a', position: 'relative' }}>{d.pct}%</div>
+            <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a', position: 'relative' }}>{d.chancePct}%</div>
             <SkinImage marketName={d.marketName} imageUrl={d.imageUrl} size={90} glowColor={d.color} style={{ margin: '4px auto' }} />
             <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a' }}>{d.w}</div>
             <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 13, color: d.color }}>{d.skin}</div>
