@@ -220,7 +220,7 @@ export const useStore = create<Store>((set, get) => ({
   },
   startSpin: (reel, won) => set({ phase: 'spin', won, reel }),
   finishSpin: () => set({ phase: 'done' }),
-  closeOpen: () => { set({ phase: 'idle' }); _navigate('/cases'); },
+  closeOpen: () => { set({ phase: 'idle' }); },
   openAgain: () => { set({ phase: 'idle' }); },
   setPhase: (p) => set({ phase: p }),
   setMultiplier: (n) => set({ multiplier: n }),
