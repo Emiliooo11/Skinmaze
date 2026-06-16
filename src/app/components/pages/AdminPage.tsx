@@ -1,8 +1,23 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { useStore } from '@/app/store/useStore';
-import { NormalizedSkin } from '@/app/lib/csfloat';
 import { CASE_IMAGES, RAR, Rarity } from '@/app/lib/data';
+
+interface SteamSkin {
+  id: string;
+  name: string;
+  skin: string;
+  fullName: string;
+  wear: string;
+  rar: string;
+  color: string;
+  rarityName: string;
+  price: number;
+  priceDisplay: string;
+  imageUrl: string;
+  isStatTrak: boolean;
+  listings: number;
+}
 import { SkinImage } from '../SkinImage';
 import { CoinIcon } from '../CoinIcon';
 
@@ -170,7 +185,7 @@ export function AdminPage() {
 function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: (c: AdminCase) => void; onBack: () => void }) {
   const [draft, setDraft] = useState<AdminCase>(initial);
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<NormalizedSkin[]>([]);
+  const [results, setResults] = useState<SteamSkin[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchErr, setSearchErr] = useState('');
 
@@ -218,11 +233,11 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
     setSearching(true);
     setSearchErr('');
     try {
-      const qs = new URLSearchParams({ limit: '24', type: 'buy_now', market_hash_name: query });
-      const res = await fetch(`/api/listings?${qs}`);
+      const qs = new URLSearchParams({ q: query, count: '24' });
+      const res = await fetch(`/api/skin-search?${qs}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
-      setResults(json.data);
+      setResults(json.results);
     } catch (e) {
       setSearchErr(String(e));
       setResults([]);
@@ -231,19 +246,19 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
     }
   }
 
-  function addSkin(s: NormalizedSkin) {
+  function addSkin(s: SteamSkin) {
     if (draft.skins.some(x => x.id === s.id)) return;
-    const rar: Rarity = RAR_MAP[s.rarityName] || 'blue';
+    const rar: Rarity = (RAR_MAP[s.rarityName] || s.rar) as Rarity;
     const skin: AdminSkin = {
       id: s.id,
       name: s.name,
       skin: s.skin,
       marketName: s.fullName,
       rar,
-      color: RAR[rar].c,
+      color: RAR[rar]?.c || s.color,
       imageUrl: s.imageUrl,
       price: s.price,
-      dropChance: RAR_DEFAULT_CHANCE[rar],
+      dropChance: RAR_DEFAULT_CHANCE[rar] ?? RAR_DEFAULT_CHANCE.blue,
     };
     setDraft(d => {
       const newSkins = [...d.skins, skin];
@@ -484,7 +499,10 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
                     </div>
                     <div style={{ textAlign: 'center', fontSize: 10, color: '#9aa39a' }}>{s.name}</div>
                     <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 11, color: s.color, lineHeight: 1.3 }}>{s.skin}</div>
-                    <div style={{ textAlign: 'center', fontSize: 10, color: '#6b746b', marginTop: 2 }}>{s.wear}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 2 }}>
+                      <span style={{ textAlign: 'center', fontSize: 10, color: '#6b746b' }}>{s.wear}</span>
+                      {s.listings > 0 && <span style={{ fontSize: 9, color: '#4a7a4a' }}>{s.listings.toLocaleString()} listed</span>}
+                    </div>
                     <div style={{ textAlign: 'center', marginTop: 6, fontSize: 12, fontWeight: 700 }}>
                       <span style={{ color: '#3ad48f', fontSize: 10 }}>$</span>{s.priceDisplay}
                     </div>
