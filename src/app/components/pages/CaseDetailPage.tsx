@@ -88,6 +88,7 @@ export function CaseDetailPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            player_id: user?.id ?? null,
             case_name: currentCase?.name ?? 'Case',
             amount: casePrice,
             won_item: `${wonItem.w} | ${wonItem.skin}`,

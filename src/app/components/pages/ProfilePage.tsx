@@ -3,15 +3,15 @@ import { useStore } from '@/app/store/useStore';
 import type { ProfileTab, InventoryItem } from '@/app/store/useStore';
 import { CoinIcon } from '../CoinIcon';
 import { SkinImage } from '../SkinImage';
+import { useEffect, useState } from 'react';
 
-const PROFILE_TABS: Array<{ key: ProfileTab | 'verify' | 'logout'; label: string; icon: string }> = [
-  { key: 'inventory', label: 'Inventory', icon: '🎒' },
-  { key: 'settings', label: 'Settings', icon: '⚙️' },
-  { key: 'security', label: 'Security', icon: '🔒' },
-  { key: 'affiliate', label: 'Affiliate', icon: '💀' },
+const PROFILE_TABS: Array<{ key: ProfileTab | 'logout'; label: string; icon: string }> = [
+  { key: 'inventory',    label: 'Inventory',    icon: '🎒' },
+  { key: 'settings',    label: 'Settings',     icon: '⚙️' },
+  { key: 'security',    label: 'Security',     icon: '🔒' },
+  { key: 'affiliate',   label: 'Affiliate',    icon: '💀' },
   { key: 'transactions', label: 'Transactions', icon: '🧾' },
-  { key: 'verify', label: 'Verify Identity', icon: '🛡️' },
-  { key: 'logout', label: 'Logout', icon: '🚪' },
+  { key: 'logout',      label: 'Logout',       icon: '🚪' },
 ];
 
 const SELF_OPTS = ['1 Day', '2 Days', '3 Days', '7 Days', '1 Month', '1 Year'];
@@ -29,17 +29,44 @@ function buildChartPath() {
 const { line: chartLine, area: chartArea } = buildChartPath();
 
 const sessions = Array.from({ length: 4 }, (_, i) => ({ id: i, loc: 'Belarus IP 192.168.0.0', date: '01.08.2025', dev: 'Windows 10' }));
-const txnStatuses = ['Paid', 'Failed', 'In Progress', 'Failed', 'Paid', 'Failed', 'In Progress', 'Failed', 'Paid', 'Failed'];
-const txns = txnStatuses.map((st, i) => ({
-  id: i, time: '10.07.2024 00:52', tid: '31252434', status: st,
-  stColor: st === 'Paid' ? '#3ad48f' : st === 'Failed' ? '#eb4b4b' : '#e0a82e',
-  stBg: st === 'Paid' ? 'rgba(58,212,143,.14)' : st === 'Failed' ? 'rgba(235,75,75,.14)' : 'rgba(224,168,46,.14)',
-  sum: '1,343.09', payout: '1,343.09', details: '01.08.2025',
-}));
 const referrals = Array.from({ length: 6 }, (_, i) => ({ id: i, name: 'whoisfrnz', wager: '1,343.09', earned: '1,343.09', since: '01.08.2025' }));
 
+interface PlayerStats {
+  totalWin: number;
+  totalWagered: number;
+  casesOpened: number;
+  favoriteCase: string | null;
+  transactions: DbWager[];
+}
+
+interface DbWager {
+  id: string;
+  case_name: string;
+  amount: number;
+  won_item: string;
+  won_item_image: string | null;
+  won_item_color: string | null;
+  won_value: number;
+  profit: number;
+  player_name: string;
+  created_at: string;
+}
+
+function fmt(n: number) {
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 export function ProfilePage() {
-  const { profileTab, setProfileTab, logout, flash, selfExcl, setSelfExcl } = useStore();
+  const { profileTab, setProfileTab, logout, flash, selfExcl, setSelfExcl, logged } = useStore();
+  const [stats, setStats] = useState<PlayerStats | null>(null);
+
+  useEffect(() => {
+    if (!logged) return;
+    fetch('/api/player-stats')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setStats(d); })
+      .catch(() => {});
+  }, [logged]);
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '230px 1fr', gap: 28, alignItems: 'start' }}>
@@ -50,7 +77,6 @@ export function ProfilePage() {
           return (
             <div key={key} onClick={() => {
               if (key === 'logout') logout();
-              else if (key === 'verify') flash('Identity verification coming soon');
               else setProfileTab(key as ProfileTab);
             }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderRadius: 11,
               cursor: 'pointer', fontSize: 14, fontWeight: 500,
@@ -90,12 +116,13 @@ export function ProfilePage() {
         {/* Settings tab */}
         {profileTab === 'settings' && (
           <div>
+            {/* Live stats cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
               {[
-                { label: 'Total Win', value: '1,343.09', coin: true },
-                { label: 'Total Wagered', value: '1,343.09', coin: true, green: true },
-                { label: 'Unboxed Cases', value: '14,433', coin: false },
-                { label: 'Favorite Case', value: '10% Knife', coin: false, gold: true },
+                { label: 'Total Win',      value: stats ? fmt(stats.totalWin)     : '—', coin: true  },
+                { label: 'Total Wagered',  value: stats ? fmt(stats.totalWagered) : '—', coin: true, green: true },
+                { label: 'Unboxed Cases',  value: stats ? String(stats.casesOpened) : '—', coin: false },
+                { label: 'Favorite Case',  value: stats?.favoriteCase ?? '—',              coin: false, gold: true },
               ].map(({ label, value, coin, green, gold }) => (
                 <div key={label} style={{ background: green ? 'linear-gradient(120deg,#0c130b,#0e1a0d)' : '#0c100c',
                   border: green ? '1px solid rgba(95,213,95,.18)' : gold ? '1px solid rgba(230,150,60,.25)' : '1px solid rgba(255,255,255,.06)',
@@ -107,11 +134,11 @@ export function ProfilePage() {
                 </div>
               ))}
             </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 40px', marginBottom: 22 }}>
               {[
-                { label: '🔒 Change Password', ph: undefined, type: 'password', val: 'password' },
                 { label: '🎮 Steam Trade URL', ph: 'steamcommunity.com/tradeoffer/new/?p...', type: 'text', val: undefined },
-                { label: '✉️ E-mail', ph: undefined, type: 'password', val: 'email@mail.com' },
+                { label: '✉️ E-mail', ph: undefined, type: 'text', val: 'email@mail.com' },
               ].map(({ label, ph, type, val }) => (
                 <div key={label}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontWeight: 600, fontSize: 16, marginBottom: 12 }}>{label}</div>
@@ -121,11 +148,8 @@ export function ProfilePage() {
                   </div>
                 </div>
               ))}
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontWeight: 600, fontSize: 16, marginBottom: 12 }}>💬 Discord account</div>
-                <button onClick={() => flash('Coming soon ✨')} style={{ width: '100%', fontWeight: 700, color: '#fff', background: '#5865f2', border: 'none', padding: 13, borderRadius: 10, cursor: 'pointer' }}>Connect to Discord</button>
-              </div>
             </div>
+
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, background: '#0c100c', border: '1px solid rgba(255,255,255,.06)', borderRadius: 14, padding: '20px 22px', marginBottom: 18 }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontWeight: 600, fontSize: 16 }}>🕵️ Anonymous</div>
@@ -256,32 +280,66 @@ export function ProfilePage() {
 
         {/* Transactions tab */}
         {profileTab === 'transactions' && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, fontSize: 18 }}>🧾 Transactions</div>
-              <div onClick={() => flash('Coming soon ✨')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#0e120e', border: '1px solid rgba(255,255,255,.08)', borderRadius: 11, padding: '11px 16px', color: '#9aa39a', fontSize: 14, cursor: 'pointer' }}>
-                Price: <span style={{ color: '#e8ece8' }}>High to Low</span> ◂
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.2fr 1fr 1.2fr 1.2fr 1fr', gap: 10, padding: '0 6px 12px', color: '#9aa39a', fontSize: 13 }}>
-              <div>Time</div><div>ID</div><div>Status</div><div>Sum</div><div>Payout</div><div style={{ textAlign: 'right' }}>Details</div>
-            </div>
-            {txns.map(tx => (
-              <div key={tx.id} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.2fr 1fr 1.2fr 1.2fr 1fr', gap: 10, padding: '14px 6px', alignItems: 'center', borderRadius: 9, fontSize: 14, borderBottom: '1px solid rgba(255,255,255,.04)' }}>
-                <div>{tx.time}</div>
-                <div style={{ color: '#cfd4cf' }}>{tx.tid}</div>
-                <div><span style={{ display: 'inline-block', padding: '5px 14px', borderRadius: 7, fontSize: 12, fontWeight: 600, color: tx.stColor, background: tx.stBg }}>{tx.status}</span></div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ color: '#3ad48f', fontWeight: 700 }}>$</span>{tx.sum}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><CoinIcon size={13} />{tx.payout}</div>
-                <div style={{ textAlign: 'right', color: '#9aa39a' }}>{tx.details}</div>
-              </div>
-            ))}
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 18 }}>
-              <button onClick={() => flash('Coming soon ✨')} style={{ fontWeight: 600, fontSize: 13, color: '#cfd4cf', background: '#0e120e', border: '1px solid rgba(255,255,255,.12)', padding: '11px 22px', borderRadius: 10, cursor: 'pointer' }}>Show more +</button>
-            </div>
-          </div>
+          <TransactionsTab stats={stats} />
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Transactions Tab ──────────────────────────────────────────────────────────
+
+function TransactionsTab({ stats }: { stats: PlayerStats | null }) {
+  const { flash } = useStore();
+  const txns = stats?.transactions ?? [];
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, fontSize: 18 }}>🧾 Transactions</div>
+      </div>
+
+      {txns.length === 0 ? (
+        <div style={{ background: '#0b0e0a', border: '1px solid rgba(255,255,255,.07)', borderRadius: 16,
+          padding: '60px 24px', textAlign: 'center', color: '#6b746b', fontSize: 14 }}>
+          {stats === null ? 'Loading…' : 'No transactions yet. Open a case to get started!'}
+        </div>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1.8fr 1fr 1fr 1fr', gap: 10, padding: '0 6px 12px', color: '#9aa39a', fontSize: 13, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+            <div>Time</div><div>Item won</div><div>Case</div><div>Cost</div><div style={{ textAlign: 'right' }}>Value</div>
+          </div>
+          {txns.map(tx => {
+            const profit = tx.profit ?? (tx.won_value - tx.amount);
+            const profitPositive = profit >= 0;
+            const dateStr = new Date(tx.created_at).toLocaleString('en-GB', {
+              day: '2-digit', month: '2-digit', year: 'numeric',
+              hour: '2-digit', minute: '2-digit',
+            });
+            const color = tx.won_item_color ?? '#4b69ff';
+            return (
+              <div key={tx.id} style={{ display: 'grid', gridTemplateColumns: '1.6fr 1.8fr 1fr 1fr 1fr', gap: 10, padding: '14px 6px', alignItems: 'center', fontSize: 13, borderBottom: '1px solid rgba(255,255,255,.04)' }}>
+                <div style={{ color: '#6b746b', fontSize: 12 }}>{dateStr}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {tx.won_item_image && (
+                    <img src={tx.won_item_image} alt="" style={{ width: 36, height: 28, objectFit: 'contain', flexShrink: 0 }} />
+                  )}
+                  <span style={{ color, fontWeight: 600, fontSize: 12, lineHeight: 1.3 }}>{tx.won_item}</span>
+                </div>
+                <div style={{ color: '#9aa39a', fontSize: 12 }}>{tx.case_name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <CoinIcon size={12} />
+                  <span style={{ fontWeight: 600 }}>{fmt(tx.amount)}</span>
+                </div>
+                <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                  <CoinIcon size={12} />
+                  <span style={{ fontWeight: 700, color: profitPositive ? '#3ad48f' : '#eb4b4b' }}>{fmt(tx.won_value)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </>
+      )}
     </div>
   );
 }
@@ -296,7 +354,7 @@ const RARITY_COLOR: Record<string, string> = {
 };
 
 function InventoryTab() {
-  const { inventory, sellItem, withdrawItem, flash, goProfile } = useStore();
+  const { inventory, sellItem, withdrawItem, flash } = useStore();
 
   if (inventory.length === 0) {
     return (
@@ -320,7 +378,6 @@ function InventoryTab() {
 
   return (
     <div>
-      {/* Summary bar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         background: '#0b0e0a', border: '1px solid rgba(255,255,255,.07)', borderRadius: 14,
         padding: '14px 20px', marginBottom: 18 }}>
@@ -336,7 +393,6 @@ function InventoryTab() {
         </div>
       </div>
 
-      {/* Item grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
         {inventory.map(item => {
           const color = RARITY_COLOR[item.rar] ?? '#4b69ff';
@@ -349,11 +405,8 @@ function InventoryTab() {
               overflow: 'hidden',
               position: 'relative',
             }}>
-              {/* Rarity stripe */}
               <div style={{ height: 3, background: color }} />
-
               <div style={{ padding: '14px 14px 12px' }}>
-                {/* Rarity badge */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color, background: `${color}18`,
                     border: `1px solid ${color}44`, borderRadius: 5, padding: '2px 8px' }}>
@@ -361,34 +414,18 @@ function InventoryTab() {
                   </span>
                   <span style={{ fontSize: 10, color: '#4a7a4a' }}>{dateStr}</span>
                 </div>
-
-                {/* Image */}
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
-                  <SkinImage
-                    marketName={item.marketName}
-                    imageUrl={item.imageUrl}
-                    size={120}
-                    glowColor={color}
-                  />
+                  <SkinImage marketName={item.marketName} imageUrl={item.imageUrl} size={120} glowColor={color} />
                 </div>
-
-                {/* Name */}
                 <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a', marginBottom: 2 }}>{item.w}</div>
-                <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 14, color, marginBottom: 2, lineHeight: 1.3 }}>
-                  {item.skin}
-                </div>
+                <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 14, color, marginBottom: 2, lineHeight: 1.3 }}>{item.skin}</div>
                 <div style={{ textAlign: 'center', fontSize: 11, color: '#4a7a4a', marginBottom: 6 }}>
                   from <span style={{ color: '#6b746b' }}>{item.caseName}</span>
                 </div>
-
-                {/* Price */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   fontWeight: 700, fontSize: 15, marginBottom: 14 }}>
-                  <CoinIcon size={15} />
-                  <span>{item.price}</span>
+                  <CoinIcon size={15} /><span>{item.price}</span>
                 </div>
-
-                {/* Actions */}
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     onClick={() => { const v = parseFloat(item.price.replace(/,/g, '')) || 0; sellItem(item.inventoryId, v); }}
