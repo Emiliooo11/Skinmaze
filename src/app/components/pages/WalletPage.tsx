@@ -3,10 +3,10 @@ import { useStore } from '@/app/store/useStore';
 import { CoinIcon } from '../CoinIcon';
 
 const METHODS = [
-  { key: 'card', title: 'Card Deposit', sub: 'Powered by Payabl', cta: 'Deposit Card', ctaBg: '#6c8cff', ctaColor: '#0a0e26', grad: 'linear-gradient(120deg,#3a2f7a,#5b3fa0)', img: '/deposit-card.png', imgStyle: { width: 260, top: '50%', right: 20, transform: 'translateY(-50%) rotate(-8deg)' } },
-  { key: 'skins', title: 'CS2 Skins', sub: 'Powered by Payabl', cta: 'Deposit Skins', ctaBg: '#6c8cff', ctaColor: '#0a0e26', grad: 'linear-gradient(120deg,#3a1410,#6a1f1a)', img: '/deposit-skins.png', imgStyle: { width: 280, top: '50%', right: 10, transform: 'translateY(-50%) rotate(-15deg)' } },
-  { key: 'crypto', title: 'Crypto', sub: 'Powered by Payabl', cta: '30+ Methods', ctaBg: '#3ad4c4', ctaColor: '#04201d', grad: 'linear-gradient(120deg,#2a1530,#5a1f2a)', img: '/deposit-crypto.png', imgStyle: { width: 240, top: '50%', right: 10, transform: 'translateY(-50%)' } },
-  { key: 'gift', title: 'Gift Cards', sub: 'Powered by Payabl', cta: 'Buy Gift Cards', ctaBg: '#e6c33e', ctaColor: '#241c04', grad: '#0d100c', img: null, imgStyle: {} },
+  { key: 'card', img: '/wallet-cards.png' },
+  { key: 'skins', img: '/wallet-skins.png' },
+  { key: 'crypto', img: '/wallet-crypto.png' },
+  { key: 'gift', img: null },
 ];
 
 const AMT_CHIPS = [10, 25, 50, 100, 250, 500];
@@ -36,20 +36,24 @@ export function WalletPage() {
           {/* Method cards */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
             {METHODS.map(m => (
-              <div key={m.key} style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', minHeight: 240, padding: 26,
-                display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', background: m.grad, border: '1px solid rgba(255,255,255,.06)' }}>
-                {m.img && (
-                  <img src={m.img} alt="" style={{ position: 'absolute', pointerEvents: 'none', objectFit: 'contain', ...m.imgStyle as React.CSSProperties }} />
-                )}
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 14 }}>
-                  <div>
-                    <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 20, color: '#fff' }}>{m.title}</div>
-                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,.6)', marginTop: 2 }}>{m.sub}</div>
-                  </div>
-                  <button onClick={() => setWalletView('amount')} style={{ fontWeight: 700, fontSize: 13, border: 'none', borderRadius: 10,
-                    padding: '11px 18px', cursor: 'pointer', whiteSpace: 'nowrap', background: m.ctaBg, color: m.ctaColor }}>{m.cta}</button>
+              m.img ? (
+                <div key={m.key} onClick={() => setWalletView('amount')} style={{ borderRadius: 16, overflow: 'hidden', cursor: 'pointer' }}>
+                  <img src={m.img} alt="" style={{ width: '100%', display: 'block' }} />
                 </div>
-              </div>
+              ) : (
+                <div key={m.key} style={{ borderRadius: 16, overflow: 'hidden', minHeight: 180,
+                  background: '#0d100c', border: '1px solid rgba(255,255,255,.06)',
+                  display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 26 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 14 }}>
+                    <div>
+                      <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 20, color: '#fff' }}>Gift Cards</div>
+                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,.6)', marginTop: 2 }}>Powered by Payabl</div>
+                    </div>
+                    <button onClick={() => setWalletView('amount')} style={{ fontWeight: 700, fontSize: 13, border: 'none', borderRadius: 10,
+                      padding: '11px 18px', cursor: 'pointer', whiteSpace: 'nowrap', background: '#e6c33e', color: '#241c04' }}>Buy Gift Cards</button>
+                  </div>
+                </div>
+              )
             ))}
           </div>
         </div>
