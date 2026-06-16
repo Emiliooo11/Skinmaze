@@ -39,10 +39,17 @@ const SECTION_GLOWS = [
   'rgba(95,95,230,.28)',
 ];
 
+interface PlatformStats { totalPlayers: number; onlinePlayers: number; casesOpened: number; }
+
 export function HomePage() {
   const { go, login, openCase, flash, bestTab, setBestTab } = useStore();
   const [layout, setLayout] = useState<HomeSection[]>(DEFAULT_HOME_LAYOUT);
   const [dbCaseMap, setDbCaseMap] = useState<Map<string, CaseItem>>(new Map());
+  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
+
+  useEffect(() => {
+    fetch('/api/platform-stats').then(r => r.ok ? r.json() : null).then(d => { if (d) setPlatformStats(d); }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     // Load layout from Supabase, fall back to localStorage
@@ -285,7 +292,12 @@ export function HomePage() {
           </button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 44px' }}>
-          {[['48,000','Players'],['1,340','Online'],['1,000,000','Opened Cases'],['24/7','Support']].map(([n, l]) => (
+          {[
+            { n: platformStats ? platformStats.totalPlayers.toLocaleString() : '—', l: 'Players' },
+            { n: platformStats ? platformStats.onlinePlayers.toLocaleString() : '—', l: 'Online' },
+            { n: platformStats ? platformStats.casesOpened.toLocaleString()  : '—', l: 'Opened Cases' },
+            { n: '24/7', l: 'Support' },
+          ].map(({ n, l }) => (
             <div key={l}>
               <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 22, color: '#5fd75f' }}>{n}</div>
               <div style={{ fontSize: 12, color: '#9aa39a' }}>{l}</div>
