@@ -59,3 +59,13 @@ create policy "public read home_layout" on home_layout for select using (true);
 create policy "public write home_layout" on home_layout for all using (true);
 create policy "public read image_collections" on image_collections for select using (true);
 create policy "public write image_collections" on image_collections for all using (true);
+
+-- Storage bucket for cached images (skin images + case images)
+insert into storage.buckets (id, name, public)
+values ('images', 'images', true)
+on conflict (id) do nothing;
+
+create policy "public read images" on storage.objects for select using (bucket_id = 'images');
+create policy "public upload images" on storage.objects for insert with check (bucket_id = 'images');
+create policy "public update images" on storage.objects for update using (bucket_id = 'images');
+create policy "public delete images" on storage.objects for delete using (bucket_id = 'images');

@@ -186,18 +186,37 @@ export function AdminPage() {
     })));
   }
 
+  async function cacheImage(url: string): Promise<string> {
+    if (!url || url.startsWith('/') || url.startsWith('data:')) return url;
+    try {
+      const res = await fetch('/api/cache-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      if (res.ok) return (await res.json()).url || url;
+    } catch {}
+    return url;
+  }
+
   async function saveCase(c: AdminCase) {
+    // Cache all images into Supabase Storage before saving
+    const [caseImageUrl, ...skinImageUrls] = await Promise.all([
+      cacheImage(c.image),
+      ...c.skins.map(s => cacheImage(s.imageUrl)),
+    ]);
+
     const saved = await upsertCase({
       id: c.id,
       name: c.name,
       price: parseFloat(c.price) || 0,
       house_edge: c.houseEdge,
-      image_url: c.image,
-      skins: c.skins.map(s => ({
+      image_url: caseImageUrl,
+      skins: c.skins.map((s, i) => ({
         market_name: s.marketName,
         name: s.name,
         skin: s.skin,
-        image_url: s.imageUrl,
+        image_url: skinImageUrls[i],
         rarity: s.rar,
         color: s.color,
         price: s.price,
@@ -205,9 +224,9 @@ export function AdminPage() {
       })),
     });
     if (saved) {
-      const updated = dbCaseToAdmin({ ...saved, skins: c.skins.map(s => ({
+      const updated = dbCaseToAdmin({ ...saved, skins: c.skins.map((s, i) => ({
         id: s.id, case_id: saved.id, market_name: s.marketName, name: s.name,
-        skin: s.skin, image_url: s.imageUrl, rarity: s.rar, color: s.color,
+        skin: s.skin, image_url: skinImageUrls[i], rarity: s.rar, color: s.color,
         price: s.price, drop_chance: s.dropChance,
       }))});
       setCases(prev => prev.some(x => x.id === saved.id)
