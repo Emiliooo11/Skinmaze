@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { CASE_IMAGES, RAR, Rarity } from '@/app/lib/data';
-import { fetchCases, upsertCase, deleteCase as dbDeleteCase, fetchHomeLayout, saveHomeLayout as dbSaveHomeLayout, fetchImageCollections, saveImageCollections, deleteImageCollection, DbCase } from '@/app/lib/db';
+import { fetchCases, upsertCase, deleteCase as dbDeleteCase, fetchHomeLayout, saveHomeLayout as dbSaveHomeLayout, fetchImageCollections, saveImageCollections, deleteImageCollection, DbCase, fetchDashboardStats, DashboardStats, fetchPlayers, DbPlayer, upsertPlayer, deletePlayer, fetchAffiliates, DbAffiliate, upsertAffiliate, deleteAffiliate, fetchReferralCodes, DbReferralCode, createReferralCode, deleteReferralCode, fetchAllReferralUses } from '@/app/lib/db';
 
 // ── Home layout config ────────────────────────────────────────────────────────
 
@@ -150,24 +150,34 @@ const RAR_DEFAULT_CHANCE: Record<Rarity, number> = {
 };
 
 export function AdminPage() {
-  const [view, setView] = useState<'list' | 'builder' | 'library' | 'homelayout'>('list');
+  const [section, setSection] = useState<'dashboard' | 'cases' | 'players' | 'homelayout' | 'affiliates'>('dashboard');
+  const [view, setView] = useState<'list' | 'builder' | 'library'>('list');
   const [cases, setCases] = useState<AdminCase[]>([]);
   const [editing, setEditing] = useState<AdminCase | null>(null);
   const [collections, setCollections] = useState<ImageCollection[]>([]);
   const [homeLayout, setHomeLayout] = useState<HomeSection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [players, setPlayers] = useState<DbPlayer[]>([]);
+  const [affiliates, setAffiliates] = useState<DbAffiliate[]>([]);
 
   useEffect(() => {
     Promise.all([
       fetchCases(),
       fetchImageCollections(),
       fetchHomeLayout(),
-    ]).then(([dbCases, dbCols, dbLayout]) => {
+      fetchDashboardStats(),
+      fetchPlayers(),
+      fetchAffiliates(),
+    ]).then(([dbCases, dbCols, dbLayout, dbStats, dbPlayers, dbAffiliates]) => {
       setCases(dbCases.map(dbCaseToAdmin));
       setCollections(dbCols.length ? dbCols : loadCollections());
       setHomeLayout(dbLayout.length ? dbLayout.map(s => ({
         id: s.id, title: s.title, icon: s.icon, caseIds: s.case_ids,
       })) : DEFAULT_HOME_LAYOUT);
+      setStats(dbStats);
+      setPlayers(dbPlayers);
+      setAffiliates(dbAffiliates);
       setLoading(false);
     });
   }, []);
@@ -254,65 +264,249 @@ export function AdminPage() {
     setView('builder');
   }
 
+  // Full-screen sub-views that take over the content area
   if (view === 'builder' && editing) {
     return (
-      <CaseBuilder
-        initial={editing}
-        collections={collections}
-        onSave={async c => { await saveCase(c); setEditing(null); setView('list'); }}
-        onBack={() => { setEditing(null); setView('list'); }}
-      />
+      <AdminShell section={section} onSection={s => { setSection(s); setView('list'); }}>
+        <CaseBuilder
+          initial={editing}
+          collections={collections}
+          onSave={async c => { await saveCase(c); setEditing(null); setView('list'); }}
+          onBack={() => { setEditing(null); setView('list'); }}
+        />
+      </AdminShell>
     );
   }
 
   if (view === 'library') {
     return (
-      <LibraryManager
-        collections={collections}
-        onChange={updateCollections}
-        onBack={() => setView('list')}
-      />
+      <AdminShell section={section} onSection={s => { setSection(s); setView('list'); }}>
+        <LibraryManager
+          collections={collections}
+          onChange={updateCollections}
+          onBack={() => setView('list')}
+        />
+      </AdminShell>
     );
   }
 
-  if (view === 'homelayout') {
-    return (
+  function renderContent() {
+    if (loading) return (
+      <div style={{ textAlign: 'center', padding: 80, color: '#6b746b', fontSize: 14 }}>Loading…</div>
+    );
+
+    if (section === 'dashboard') return (
+      <DashboardSection stats={stats} cases={cases} players={players} />
+    );
+
+    if (section === 'cases') return (
+      <CasesSection
+        cases={cases}
+        onNew={newCase}
+        onEdit={c => { setEditing(c); setView('builder'); }}
+        onDelete={handleDeleteCase}
+        onLibrary={() => setView('library')}
+      />
+    );
+
+    if (section === 'players') return (
+      <PlayersSection
+        players={players}
+        onUpdate={async p => { const saved = await upsertPlayer(p); if (saved) setPlayers(prev => prev.some(x => x.id === saved.id) ? prev.map(x => x.id === saved.id ? saved : x) : [saved, ...prev]); }}
+        onDelete={async id => { await deletePlayer(id); setPlayers(prev => prev.filter(x => x.id !== id)); }}
+      />
+    );
+
+    if (section === 'homelayout') return (
       <HomeLayoutManager
         layout={homeLayout}
         onChange={updateHomeLayout}
-        onBack={() => setView('list')}
+        onBack={() => setSection('cases')}
         cases={cases}
       />
     );
+
+    if (section === 'affiliates') return (
+      <AffiliatesSection
+        affiliates={affiliates}
+        onUpdate={async a => { const saved = await upsertAffiliate(a); if (saved) setAffiliates(prev => prev.some(x => x.id === saved.id) ? prev.map(x => x.id === saved.id ? saved : x) : [saved, ...prev]); }}
+        onDelete={async id => { await deleteAffiliate(id); setAffiliates(prev => prev.filter(x => x.id !== id)); }}
+      />
+    );
+
+    return null;
   }
 
   return (
+    <AdminShell section={section} onSection={s => { setSection(s); setView('list'); }}>
+      {renderContent()}
+    </AdminShell>
+  );
+}
+
+// ── Admin Shell (sidebar layout) ──────────────────────────────────────────────
+
+type AdminSection = 'dashboard' | 'cases' | 'players' | 'homelayout' | 'affiliates';
+
+const NAV_ITEMS: { id: AdminSection; label: string; icon: string }[] = [
+  { id: 'dashboard',  label: 'Dashboard',    icon: '📊' },
+  { id: 'cases',      label: 'Cases',        icon: '🗃️' },
+  { id: 'players',    label: 'Players',      icon: '👥' },
+  { id: 'homelayout', label: 'Home Layout',  icon: '🏠' },
+  { id: 'affiliates', label: 'Affiliates',   icon: '🔗' },
+];
+
+function AdminShell({ section, onSection, children }: { section: AdminSection; onSection: (s: AdminSection) => void; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', gap: 0, minHeight: '100vh', overflow: 'hidden' }}>
+      {/* Sidebar */}
+      <div style={{ width: 220, flexShrink: 0, background: '#080b07', borderRight: '1px solid rgba(255,255,255,.06)',
+        padding: '28px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 13, color: '#4a7a4a',
+          letterSpacing: 1.5, textTransform: 'uppercase', padding: '0 8px', marginBottom: 16 }}>Admin</div>
+        {NAV_ITEMS.map(item => {
+          const active = section === item.id;
+          return (
+            <button key={item.id} onClick={() => onSection(item.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 12px', borderRadius: 10,
+                border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%',
+                background: active ? 'rgba(95,213,95,.12)' : 'transparent',
+                color: active ? '#7fe877' : '#7a8a7a',
+                fontFamily: 'var(--font-outfit)', fontWeight: active ? 600 : 400, fontSize: 14,
+                transition: 'all .12s' }}
+              onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,.04)'; }}
+              onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}>
+              <span style={{ fontSize: 16 }}>{item.icon}</span>
+              {item.label}
+              {active && <span style={{ marginLeft: 'auto', width: 4, height: 4, borderRadius: '50%', background: '#7fe877' }} />}
+            </button>
+          );
+        })}
+        <div style={{ marginTop: 'auto', paddingTop: 20, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', fontSize: 13,
+            color: '#4a7a4a', textDecoration: 'none', borderRadius: 8,
+            fontFamily: 'var(--font-outfit)' }}>
+            ← Back to site
+          </a>
+        </div>
+      </div>
+      {/* Content */}
+      <div style={{ flex: 1, padding: '28px 32px', overflowY: 'auto', maxHeight: '100vh' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ── Dashboard Section ─────────────────────────────────────────────────────────
+
+function DashboardSection({ stats, cases, players }: { stats: DashboardStats | null; cases: AdminCase[]; players: DbPlayer[] }) {
+  const [period, setPeriod] = useState<'24h' | '7d' | '30d'>('24h');
+  const s = stats;
+
+  const registrations = period === '24h' ? s?.newRegistrations24h : period === '7d' ? s?.newRegistrations7d : s?.newRegistrations30d;
+  const casesOpened   = period === '24h' ? s?.casesOpened24h    : period === '7d' ? s?.casesOpened7d    : s?.casesOpened30d;
+  const wagerTotal    = period === '24h' ? s?.wagerTotal24h     : period === '7d' ? s?.wagerTotal7d     : s?.wagerTotal30d;
+
+  const STAT_CARDS = [
+    { label: 'Total Players',       value: s?.totalPlayers ?? 0,       sub: `${s?.activePlayers24h ?? 0} active now`, color: '#5fd75f' },
+    { label: 'New Registrations',   value: registrations ?? 0,         sub: `in last ${period}`,                      color: '#7ec8e3' },
+    { label: 'Cases Opened',        value: casesOpened ?? 0,           sub: `in last ${period}`,                      color: '#e3a87e' },
+    { label: 'Total Wagered',       value: `$${(wagerTotal ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, sub: `in last ${period}`, color: '#b07ee3' },
+    { label: 'Active Cases',        value: cases.length,               sub: 'published',                              color: '#5fd75f' },
+    { label: 'Player Database',     value: players.length,             sub: 'total accounts',                         color: '#7ec8e3' },
+  ];
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+        <h1 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 22, margin: 0 }}>Dashboard</h1>
+        <div style={{ display: 'flex', gap: 6, background: '#0e120e', border: '1px solid rgba(255,255,255,.08)', borderRadius: 10, padding: 4 }}>
+          {(['24h','7d','30d'] as const).map(p => (
+            <button key={p} onClick={() => setPeriod(p)}
+              style={{ padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                fontFamily: 'var(--font-outfit)',
+                background: period === p ? '#1e2e1e' : 'transparent',
+                color: period === p ? '#7fe877' : '#6b746b' }}>
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 32 }}>
+        {STAT_CARDS.map(card => (
+          <div key={card.label} style={{ background: '#0c0f0b', border: '1px solid rgba(255,255,255,.07)', borderRadius: 14, padding: '20px 22px' }}>
+            <div style={{ fontSize: 12, color: '#6b746b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>{card.label}</div>
+            <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 28, color: card.color, marginBottom: 4 }}>{card.value}</div>
+            <div style={{ fontSize: 12, color: '#4a7a4a' }}>{card.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Recent cases */}
+      <div style={{ background: '#0c0f0b', border: '1px solid rgba(255,255,255,.07)', borderRadius: 14, padding: 22 }}>
+        <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 16, margin: '0 0 16px' }}>Recent Cases</h3>
+        {cases.length === 0 ? (
+          <div style={{ color: '#4a7a4a', fontSize: 13 }}>No cases yet.</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ color: '#4a7a4a', fontWeight: 600 }}>
+                {['Name','Price','Skins','EV','RTP','Edge'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '6px 12px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {cases.slice(0, 10).map(c => {
+                const ev = calcEV(c.skins);
+                const price = parseFloat(c.price) || 0;
+                const rtp = price > 0 ? (ev / price * 100).toFixed(1) : '-';
+                return (
+                  <tr key={c.id} style={{ borderBottom: '1px solid rgba(255,255,255,.04)' }}>
+                    <td style={{ padding: '9px 12px', color: '#e8ece8', fontWeight: 600 }}>{c.name}</td>
+                    <td style={{ padding: '9px 12px', color: '#9aa39a' }}>${c.price}</td>
+                    <td style={{ padding: '9px 12px', color: '#9aa39a' }}>{c.skins.length}</td>
+                    <td style={{ padding: '9px 12px', color: '#9aa39a' }}>${ev.toFixed(2)}</td>
+                    <td style={{ padding: '9px 12px', color: price > 0 && parseFloat(c.price) >= ev ? '#3ad48f' : '#eb4b4b' }}>{rtp}%</td>
+                    <td style={{ padding: '9px 12px', color: '#9aa39a' }}>{c.houseEdge}%</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Cases Section ─────────────────────────────────────────────────────────────
+
+function CasesSection({ cases, onNew, onEdit, onDelete, onLibrary }: {
+  cases: AdminCase[];
+  onNew: () => void;
+  onEdit: (c: AdminCase) => void;
+  onDelete: (id: string) => void;
+  onLibrary: () => void;
+}) {
+  return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 24, margin: 0 }}>Case Builder</h1>
-        </div>
+        <h1 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 22, margin: 0 }}>Cases</h1>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => setView('homelayout')} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#9aa39a',
-            background: '#0e120e', border: '1px solid rgba(255,255,255,.1)', padding: '11px 22px', borderRadius: 11, cursor: 'pointer' }}>
-            🏠 Home Layout
-          </button>
-          <button onClick={() => setView('library')} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#9aa39a',
+          <button onClick={onLibrary} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#9aa39a',
             background: '#0e120e', border: '1px solid rgba(255,255,255,.1)', padding: '11px 22px', borderRadius: 11, cursor: 'pointer' }}>
             🗂 Image Library
           </button>
-          <button onClick={newCase} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a',
+          <button onClick={onNew} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a',
             background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '12px 28px', borderRadius: 11, cursor: 'pointer' }}>
             + New Case
           </button>
         </div>
       </div>
-
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 80, color: '#6b746b', fontSize: 14 }}>
-          Loading cases…
-        </div>
-      ) : cases.length === 0 ? (
+      {cases.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 80, color: '#6b746b', fontSize: 14 }}>
           No cases yet. Click <strong style={{ color: '#7fe877' }}>+ New Case</strong> to build one.
         </div>
@@ -335,11 +529,11 @@ export function AdminPage() {
                   {price > 0 && <span style={{ color: price >= ev ? '#3ad48f' : '#eb4b4b' }}> · RTP {((ev / price) * 100).toFixed(1)}%</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => { setEditing(c); setView('builder'); }}
+                  <button onClick={() => onEdit(c)}
                     style={{ flex: 1, background: '#1c241b', border: '1px solid rgba(95,213,95,.2)', borderRadius: 9, padding: '9px 0', color: '#7fe877', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
                     Edit
                   </button>
-                  <button onClick={() => handleDeleteCase(c.id)}
+                  <button onClick={() => onDelete(c.id)}
                     style={{ width: 38, background: '#1a1014', border: '1px solid rgba(235,75,75,.2)', borderRadius: 9, color: '#eb4b4b', fontSize: 15, cursor: 'pointer' }}>
                     🗑
                   </button>
@@ -347,6 +541,392 @@ export function AdminPage() {
               </div>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Players Section ───────────────────────────────────────────────────────────
+
+function PlayersSection({ players, onUpdate, onDelete }: {
+  players: DbPlayer[];
+  onUpdate: (p: Partial<DbPlayer> & { id?: string }) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const [query, setQuery] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ username: '', email: '', steam_id: '' });
+  const [saving, setSaving] = useState(false);
+
+  const filtered = players.filter(p =>
+    !query || p.username.toLowerCase().includes(query.toLowerCase()) || (p.email || '').toLowerCase().includes(query.toLowerCase())
+  );
+
+  async function handleAdd() {
+    if (!form.username.trim()) return;
+    setSaving(true);
+    await onUpdate({ username: form.username, email: form.email, steam_id: form.steam_id });
+    setForm({ username: '', email: '', steam_id: '' });
+    setAdding(false);
+    setSaving(false);
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <h1 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 22, margin: 0 }}>Players</h1>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#0e120e',
+            border: '1px solid rgba(255,255,255,.08)', borderRadius: 10, padding: '10px 14px' }}>
+            <span style={{ color: '#4a7a4a', fontSize: 14 }}>🔍</span>
+            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search players…"
+              style={{ background: 'transparent', border: 'none', outline: 'none', color: '#e8ece8',
+                fontFamily: 'var(--font-outfit)', fontSize: 13, width: 200 }} />
+          </div>
+          <button onClick={() => setAdding(true)} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14,
+            color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none',
+            padding: '10px 20px', borderRadius: 11, cursor: 'pointer' }}>
+            + Add Player
+          </button>
+        </div>
+      </div>
+
+      {/* Add form */}
+      {adding && (
+        <div style={{ background: '#0c0f0b', border: '1px solid rgba(95,213,95,.2)', borderRadius: 14, padding: 20, marginBottom: 20, display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          {[['Username*', 'username'], ['Email', 'email'], ['Steam ID', 'steam_id']].map(([label, key]) => (
+            <div key={key} style={{ flex: 1, minWidth: 160 }}>
+              <div style={{ fontSize: 11, color: '#4a7a4a', marginBottom: 5 }}>{label}</div>
+              <input value={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                style={{ width: '100%', background: '#111611', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8,
+                  padding: '9px 12px', color: '#e8ece8', fontFamily: 'var(--font-outfit)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={handleAdd} disabled={saving}
+              style={{ background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', borderRadius: 9,
+                padding: '9px 18px', color: '#06270a', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              {saving ? '…' : 'Save'}
+            </button>
+            <button onClick={() => setAdding(false)}
+              style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,.1)', borderRadius: 9,
+                padding: '9px 14px', color: '#9aa39a', fontSize: 13, cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ background: '#0c0f0b', border: '1px solid rgba(255,255,255,.07)', borderRadius: 14, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: '#0a0d09' }}>
+              {['Username','Email','Steam ID','Balance','Wagered','Cases','Status','Registered','Actions'].map(h => (
+                <th key={h} style={{ textAlign: 'left', padding: '12px 14px', color: '#4a7a4a', fontWeight: 600,
+                  fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.8,
+                  borderBottom: '1px solid rgba(255,255,255,.06)' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: '#4a7a4a', fontSize: 13 }}>
+                {players.length === 0 ? 'No players yet.' : 'No results.'}
+              </td></tr>
+            ) : filtered.map(p => (
+              <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,.04)' }}>
+                <td style={{ padding: '10px 14px', fontWeight: 600, color: '#e8ece8' }}>{p.username}</td>
+                <td style={{ padding: '10px 14px', color: '#9aa39a' }}>{p.email || '—'}</td>
+                <td style={{ padding: '10px 14px', color: '#6b746b', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{p.steam_id || '—'}</td>
+                <td style={{ padding: '10px 14px', color: '#7fe877' }}>${(p.balance || 0).toFixed(2)}</td>
+                <td style={{ padding: '10px 14px', color: '#9aa39a' }}>${(p.total_wagered || 0).toFixed(2)}</td>
+                <td style={{ padding: '10px 14px', color: '#9aa39a' }}>{p.cases_opened || 0}</td>
+                <td style={{ padding: '10px 14px' }}>
+                  <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                    background: p.status === 'active' ? 'rgba(95,213,95,.15)' : 'rgba(235,75,75,.15)',
+                    color: p.status === 'active' ? '#5fd75f' : '#eb4b4b' }}>
+                    {p.status || 'active'}
+                  </span>
+                </td>
+                <td style={{ padding: '10px 14px', color: '#6b746b', fontSize: 11 }}>
+                  {new Date(p.created_at).toLocaleDateString()}
+                </td>
+                <td style={{ padding: '10px 14px' }}>
+                  <button onClick={() => onDelete(p.id)}
+                    style={{ background: 'none', border: '1px solid rgba(235,75,75,.2)', borderRadius: 6,
+                      color: '#eb4b4b', fontSize: 12, padding: '4px 10px', cursor: 'pointer' }}>
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ marginTop: 10, fontSize: 12, color: '#4a7a4a' }}>{filtered.length} of {players.length} players</div>
+    </div>
+  );
+}
+
+// ── Affiliates Section ────────────────────────────────────────────────────────
+
+function AffiliatesSection({ affiliates, onUpdate, onDelete }: {
+  affiliates: DbAffiliate[];
+  onUpdate: (a: Partial<DbAffiliate>) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const [selected, setSelected] = useState<DbAffiliate | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({ name: '', email: '', platform: '', commission_pct: '5', notes: '' });
+  const [saving, setSaving] = useState(false);
+  const [codes, setCodes] = useState<DbReferralCode[]>([]);
+  const [uses, setUses] = useState<(ReturnType<typeof fetchAllReferralUses> extends Promise<infer T> ? T : never)>([]);
+  const [newCode, setNewCode] = useState('');
+  const [codesLoading, setCodesLoading] = useState(false);
+
+  async function openAffiliate(a: DbAffiliate) {
+    setSelected(a);
+    setCodesLoading(true);
+    const [c, u] = await Promise.all([fetchReferralCodes(a.id), fetchAllReferralUses()]);
+    setCodes(c);
+    setUses(u.filter(x => x.affiliate_id === a.id));
+    setCodesLoading(false);
+  }
+
+  async function handleCreate() {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    await onUpdate({ name: form.name, email: form.email, platform: form.platform, commission_pct: parseFloat(form.commission_pct) || 5, notes: form.notes });
+    setForm({ name: '', email: '', platform: '', commission_pct: '5', notes: '' });
+    setCreating(false);
+    setSaving(false);
+  }
+
+  async function handleIssueCode() {
+    if (!selected || !newCode.trim()) return;
+    const result = await createReferralCode(selected.id, newCode.trim().toUpperCase());
+    if (result) { setCodes(prev => [result, ...prev]); setNewCode(''); }
+  }
+
+  async function handleDeleteCode(id: string) {
+    await deleteReferralCode(id);
+    setCodes(prev => prev.filter(x => x.id !== id));
+  }
+
+  // Calculate rewards for selected affiliate
+  const totalWageredByReferrals = uses.reduce((sum, u) => sum + (u.wager_amount || 0), 0);
+  const totalReward = selected ? totalWageredByReferrals * (selected.commission_pct / 100) : 0;
+  const uniquePlayers = new Set(uses.map(u => u.player_id)).size;
+
+  if (selected) {
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
+          <button onClick={() => setSelected(null)}
+            style={{ background: '#0e120e', border: '1px solid rgba(255,255,255,.1)', borderRadius: 9,
+              padding: '8px 14px', color: '#9aa39a', fontSize: 13, cursor: 'pointer' }}>
+            ← Back
+          </button>
+          <h1 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 22, margin: 0 }}>{selected.name}</h1>
+          <span style={{ fontSize: 12, color: '#4a7a4a', background: '#0c140b', border: '1px solid rgba(95,213,95,.15)',
+            borderRadius: 6, padding: '3px 8px' }}>{selected.platform || 'No platform'}</span>
+        </div>
+
+        {/* Stats cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 28 }}>
+          {[
+            { label: 'Referral Codes', value: codes.length, color: '#7ec8e3' },
+            { label: 'Referred Players', value: uniquePlayers, color: '#5fd75f' },
+            { label: 'Total Wager Volume', value: `$${totalWageredByReferrals.toFixed(2)}`, color: '#e3a87e' },
+            { label: `Reward (${selected.commission_pct}%)`, value: `$${totalReward.toFixed(2)}`, color: '#b07ee3' },
+          ].map(card => (
+            <div key={card.label} style={{ background: '#0c0f0b', border: '1px solid rgba(255,255,255,.07)', borderRadius: 12, padding: '16px 18px' }}>
+              <div style={{ fontSize: 11, color: '#4a7a4a', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>{card.label}</div>
+              <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 22, color: card.color }}>{card.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Details */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          {/* Referral codes */}
+          <div style={{ background: '#0c0f0b', border: '1px solid rgba(255,255,255,.07)', borderRadius: 14, padding: 20 }}>
+            <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 15, margin: '0 0 16px' }}>Referral Codes</h3>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <input value={newCode} onChange={e => setNewCode(e.target.value.toUpperCase())}
+                placeholder="e.g. STREAMER20" maxLength={24}
+                onKeyDown={e => e.key === 'Enter' && handleIssueCode()}
+                style={{ flex: 1, background: '#111611', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8,
+                  padding: '9px 12px', color: '#e8ece8', fontFamily: 'var(--font-mono)', fontSize: 13, outline: 'none' }} />
+              <button onClick={handleIssueCode}
+                style={{ background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', borderRadius: 8,
+                  padding: '9px 16px', color: '#06270a', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                Issue
+              </button>
+            </div>
+            {codesLoading ? <div style={{ color: '#4a7a4a', fontSize: 13 }}>Loading…</div> : codes.length === 0 ? (
+              <div style={{ color: '#4a7a4a', fontSize: 13 }}>No codes issued yet.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {codes.map(code => {
+                  const codeUses = uses.filter(u => u.code_id === code.id);
+                  const codeWager = codeUses.reduce((s, u) => s + (u.wager_amount || 0), 0);
+                  const codeReward = codeWager * (selected.commission_pct / 100);
+                  return (
+                    <div key={code.id} style={{ display: 'flex', alignItems: 'center', gap: 10,
+                      background: '#0e120e', border: '1px solid rgba(255,255,255,.06)', borderRadius: 9, padding: '10px 14px' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 14, color: '#7fe877', flex: 1 }}>{code.code}</span>
+                      <span style={{ fontSize: 11, color: '#6b746b' }}>{codeUses.length} uses</span>
+                      <span style={{ fontSize: 11, color: '#b07ee3' }}>~${codeReward.toFixed(2)}</span>
+                      <button onClick={() => { navigator.clipboard.writeText(`https://skinmaze.gg?ref=${code.code}`); }}
+                        style={{ background: 'none', border: '1px solid rgba(255,255,255,.1)', borderRadius: 6,
+                          color: '#9aa39a', fontSize: 11, padding: '3px 8px', cursor: 'pointer' }}>
+                        Copy link
+                      </button>
+                      <button onClick={() => handleDeleteCode(code.id)}
+                        style={{ background: 'none', border: '1px solid rgba(235,75,75,.2)', borderRadius: 6,
+                          color: '#eb4b4b', fontSize: 11, padding: '3px 8px', cursor: 'pointer' }}>
+                        ✕
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Info + recent uses */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ background: '#0c0f0b', border: '1px solid rgba(255,255,255,.07)', borderRadius: 14, padding: 20 }}>
+              <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 15, margin: '0 0 14px' }}>Details</h3>
+              {[
+                ['Email', selected.email || '—'],
+                ['Platform', selected.platform || '—'],
+                ['Commission', `${selected.commission_pct}%`],
+                ['Since', new Date(selected.created_at).toLocaleDateString()],
+              ].map(([k, v]) => (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0',
+                  borderBottom: '1px solid rgba(255,255,255,.04)', fontSize: 13 }}>
+                  <span style={{ color: '#6b746b' }}>{k}</span>
+                  <span style={{ color: '#e8ece8' }}>{v}</span>
+                </div>
+              ))}
+              {selected.notes && <div style={{ marginTop: 12, fontSize: 12, color: '#6b746b' }}>{selected.notes}</div>}
+            </div>
+
+            <div style={{ background: '#0c0f0b', border: '1px solid rgba(255,255,255,.07)', borderRadius: 14, padding: 20 }}>
+              <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 15, margin: '0 0 14px' }}>Recent Activity</h3>
+              {uses.length === 0 ? (
+                <div style={{ fontSize: 13, color: '#4a7a4a' }}>No referral activity yet.</div>
+              ) : uses.slice(0, 8).map(u => (
+                <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0',
+                  borderBottom: '1px solid rgba(255,255,255,.04)', fontSize: 12 }}>
+                  <span style={{ color: '#9aa39a', fontFamily: 'var(--font-mono)' }}>{u.code}</span>
+                  <span style={{ color: '#7fe877' }}>${(u.wager_amount || 0).toFixed(2)}</span>
+                  <span style={{ color: '#4a7a4a' }}>{new Date(u.created_at).toLocaleDateString()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <h1 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 22, margin: 0 }}>Affiliates</h1>
+        <button onClick={() => setCreating(true)}
+          style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a',
+            background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '10px 22px', borderRadius: 11, cursor: 'pointer' }}>
+          + New Affiliate
+        </button>
+      </div>
+
+      {creating && (
+        <div style={{ background: '#0c0f0b', border: '1px solid rgba(95,213,95,.2)', borderRadius: 14, padding: 22, marginBottom: 22 }}>
+          <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 15, margin: '0 0 16px' }}>New Affiliate</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 12 }}>
+            {[['Name*', 'name', 'e.g. xQc'], ['Email', 'email', ''], ['Platform', 'platform', 'Twitch / YouTube']].map(([label, key, ph]) => (
+              <div key={key}>
+                <div style={{ fontSize: 11, color: '#4a7a4a', marginBottom: 5 }}>{label}</div>
+                <input value={(form as any)[key]} placeholder={ph} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                  style={{ width: '100%', background: '#111611', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8,
+                    padding: '9px 12px', color: '#e8ece8', fontFamily: 'var(--font-outfit)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12, marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 11, color: '#4a7a4a', marginBottom: 5 }}>Commission %</div>
+              <input value={form.commission_pct} type="number" min="0" max="100" step="0.5"
+                onChange={e => setForm(f => ({ ...f, commission_pct: e.target.value }))}
+                style={{ width: '100%', background: '#111611', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8,
+                  padding: '9px 12px', color: '#e8ece8', fontFamily: 'var(--font-outfit)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: '#4a7a4a', marginBottom: 5 }}>Notes</div>
+              <input value={form.notes} placeholder="Deal notes, contract info…"
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                style={{ width: '100%', background: '#111611', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8,
+                  padding: '9px 12px', color: '#e8ece8', fontFamily: 'var(--font-outfit)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={handleCreate} disabled={saving}
+              style={{ background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', borderRadius: 9,
+                padding: '10px 22px', color: '#06270a', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              {saving ? 'Saving…' : 'Create Affiliate'}
+            </button>
+            <button onClick={() => setCreating(false)}
+              style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,.1)', borderRadius: 9,
+                padding: '10px 16px', color: '#9aa39a', fontSize: 13, cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {affiliates.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 80, color: '#4a7a4a', fontSize: 14 }}>
+          No affiliates yet. Click <strong style={{ color: '#7fe877' }}>+ New Affiliate</strong> to add one.
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 16 }}>
+          {affiliates.map(a => (
+            <div key={a.id} style={{ background: '#0c0f0b', border: '1px solid rgba(255,255,255,.07)', borderRadius: 14, padding: 20, cursor: 'pointer',
+              transition: 'border-color .12s' }}
+              onClick={() => openAffiliate(a)}
+              onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(95,213,95,.3)'}
+              onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,.07)'}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 16 }}>{a.name}</div>
+                <span style={{ fontSize: 11, color: '#b07ee3', background: 'rgba(176,126,227,.1)',
+                  border: '1px solid rgba(176,126,227,.2)', borderRadius: 6, padding: '3px 8px' }}>
+                  {a.commission_pct}% commission
+                </span>
+              </div>
+              {a.platform && <div style={{ fontSize: 12, color: '#4a7a4a', marginBottom: 6 }}>{a.platform}</div>}
+              {a.email && <div style={{ fontSize: 12, color: '#6b746b', marginBottom: 12 }}>{a.email}</div>}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: '#4a7a4a' }}>Added {new Date(a.created_at).toLocaleDateString()}</span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={e => { e.stopPropagation(); openAffiliate(a); }}
+                    style={{ background: '#1c241b', border: '1px solid rgba(95,213,95,.2)', borderRadius: 7,
+                      padding: '5px 12px', color: '#7fe877', fontSize: 12, cursor: 'pointer' }}>
+                    Manage
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); onDelete(a.id); }}
+                    style={{ background: '#1a1014', border: '1px solid rgba(235,75,75,.2)', borderRadius: 7,
+                      padding: '5px 10px', color: '#eb4b4b', fontSize: 12, cursor: 'pointer' }}>
+                    🗑
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
