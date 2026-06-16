@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${baseUrl}/?error=steam_auth_failed`);
   }
 
-  // Extract Steam ID from claimed_id URL
+  // Extract Steam ID
   const claimedId = params['openid.claimed_id'] || '';
   const steamId = claimedId.match(/\/id\/(\d+)$/)?.[1];
   if (!steamId) {
@@ -33,43 +33,38 @@ export async function GET(request: Request) {
   }
 
   // Fetch Steam profile
-  const profileRes = await fetch(
-    `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${process.env.STEAM_API_KEY}&steamids=${steamId}`
-  );
-  const profileJson = await profileRes.json();
-  const steamPlayer = profileJson.response?.players?.[0];
+  let steamPlayer: { personaname?: string; avatarfull?: string } | null = null;
+  try {
+    const profileRes = await fetch(
+      `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${process.env.STEAM_API_KEY}&steamids=${steamId}`
+    );
+    const profileJson = await profileRes.json();
+    steamPlayer = profileJson.response?.players?.[0] ?? null;
+  } catch {}
 
-  // Get pending registration data (name + email from modal)
+  // Get pending registration data
   const cookieStore = await cookies();
   const pending = JSON.parse(cookieStore.get('steam_pending')?.value || '{}');
 
-  // Find or create player in Supabase
-  const { data: existing } = await supabase
+  // Try to find existing player by steam_id
+  const { data: existing, error: findError } = await supabase
     .from('players')
     .select('*')
     .eq('steam_id', steamId)
-    .single();
+    .maybeSingle();
 
-  let player;
-  if (existing) {
-    // Update last_active
-    const { data: updated } = await supabase
-      .from('players')
-      .update({ last_active: new Date().toISOString() })
-      .eq('steam_id', steamId)
-      .select()
-      .single();
-    player = updated || existing;
-  } else {
+  let player = existing;
+
+  if (!existing) {
     // Create new player
-    const { data: created } = await supabase
+    const { data: created, error: insertError } = await supabase
       .from('players')
       .insert({
         id: crypto.randomUUID(),
         steam_id: steamId,
         username: steamPlayer?.personaname || pending.name || 'Player',
-        email: pending.email || '',
-        balance: 0.50, // welcome bonus
+        email: pending.email || null,
+        balance: 0.50,
         total_wagered: 0,
         cases_opened: 0,
         status: 'active',
@@ -78,11 +73,27 @@ export async function GET(request: Request) {
       })
       .select()
       .single();
+
+    if (insertError) {
+      console.error('Player insert error:', insertError);
+      return NextResponse.redirect(
+        `${baseUrl}/?error=${encodeURIComponent(insertError.message)}`
+      );
+    }
     player = created;
+  } else {
+    // Update last_active
+    const { data: updated } = await supabase
+      .from('players')
+      .update({ last_active: new Date().toISOString() })
+      .eq('steam_id', steamId)
+      .select()
+      .single();
+    player = updated || existing;
   }
 
   if (!player) {
-    return NextResponse.redirect(`${baseUrl}/?error=db_error`);
+    return NextResponse.redirect(`${baseUrl}/?error=player_null`);
   }
 
   // Set signed session cookie
@@ -97,7 +108,7 @@ export async function GET(request: Request) {
 
   cookieStore.set('sm_session', sessionToken, {
     httpOnly: true,
-    maxAge: 60 * 60 * 24 * 30, // 30 days
+    maxAge: 60 * 60 * 24 * 30,
     path: '/',
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
