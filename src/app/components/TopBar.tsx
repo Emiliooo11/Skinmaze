@@ -5,7 +5,7 @@ import { CoinIcon } from './CoinIcon';
 
 export function TopBar() {
   const pathname = usePathname();
-  const { go, login, goProfile, goWallet, logged, flash } = useStore();
+  const { go, openLogin, goProfile, goWallet, logged, flash } = useStore();
 
   const onCases  = pathname === '/cases' || pathname.startsWith('/cases/');
   const onMarket = pathname === '/market';
@@ -43,7 +43,7 @@ export function TopBar() {
       {/* Guest buttons */}
       {!logged && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <button onClick={login} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a',
+          <button onClick={openLogin} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a',
             background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '12px 24px',
             borderRadius: 11, cursor: 'pointer', boxShadow: '0 6px 18px rgba(95,213,95,.3)' }}>Login/Register</button>
         </div>

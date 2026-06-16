@@ -78,6 +78,7 @@ interface Store {
   spinHistory: SpinRecord[];
   fairnessOpen: boolean;
   lastSpinHash: string | null;
+  loginOpen: boolean;
 
   setRoute: (r: Route) => void;
   go: (r: Route) => void;
@@ -122,6 +123,8 @@ interface Store {
   rotateSeed: () => Promise<void>;
   openFairness: () => void;
   closeFairness: () => void;
+  openLogin: () => void;
+  closeLogin: () => void;
   recordSpin: (r: SpinRecord) => void;
   setLastSpinHash: (h: string | null) => void;
 }
@@ -167,6 +170,7 @@ export const useStore = create<Store>((set, get) => ({
   spinHistory: [],
   fairnessOpen: false,
   lastSpinHash: null,
+  loginOpen: false,
 
   setRoute: (r) => set({ route: r }),
   go: (r) => { set({ route: r, mpItem: null }); _navigate(routeToPath(r)); try { window.scrollTo(0, 0); } catch {}; },
@@ -177,7 +181,9 @@ export const useStore = create<Store>((set, get) => ({
     const t = setTimeout(() => set({ toast: null }), 1900);
     set({ toast: msg, _toastTimer: t });
   },
-  login: () => { set({ logged: true }); _navigate('/cases'); },
+  openLogin: () => set({ loginOpen: true }),
+  closeLogin: () => set({ loginOpen: false }),
+  login: () => { set({ logged: true, loginOpen: false }); _navigate('/cases'); },
   logout: () => { set({ logged: false }); _navigate('/'); },
   openCase: (c) => {
     set({ currentCase: c, phase: 'idle', won: null, reel: [] });

@@ -5,6 +5,7 @@ import { Footer } from './Footer';
 import { Toast } from './Toast';
 import { MarketItemModal } from './modals/MarketItemModal';
 import { FairnessModal } from './modals/FairnessModal';
+import { LoginModal } from './modals/LoginModal';
 import { NavigationProvider } from './NavigationProvider';
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
@@ -19,6 +20,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         <Footer />
         <MarketItemModal />
         <FairnessModal />
+        <LoginModal />
         <Toast />
       </div>
     </NavigationProvider>
