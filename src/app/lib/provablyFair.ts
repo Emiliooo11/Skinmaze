@@ -1,4 +1,5 @@
 import { POOL, RAR, Rarity, ReelItem, priceFor, fmt } from './data';
+import { usdToCoins } from './currency';
 
 // ── Crypto helpers ──────────────────────────────────────────────────────────
 
@@ -76,7 +77,8 @@ export async function rollToItem(
     gold: [3200, 18000], red: [800, 4200], pink: [300, 1200], purple: [80, 420], blue: [5, 70],
   };
   const [lo, hi] = ranges[rar];
-  const price = +(lo + priceRoll * (hi - lo)).toFixed(2);
+  const usd = +(lo + priceRoll * (hi - lo)).toFixed(2);
+  const price = usdToCoins(usd);
 
   return {
     w: p.w, skin: p.skin, rar, color: RAR[rar].c,

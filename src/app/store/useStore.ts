@@ -123,9 +123,12 @@ interface Store {
   setWalletView: (v: WalletView) => void;
   setDepositAmt: (n: number) => void;
 
+  // Balance
+  adjustBalance: (delta: number) => Promise<{ balance: number } | { error: string; balance?: number }>;
+
   // Provably fair actions
   keepItem: (item: ReelItem, caseName: string) => void;
-  sellItem: (inventoryId: string) => void;
+  sellItem: (inventoryId: string, coinValue: number) => void;
   withdrawItem: (inventoryId: string) => void;
 
   setClientSeed: (s: string) => void;
@@ -252,6 +255,19 @@ export const useStore = create<Store>((set, get) => ({
   setWalletView: (v) => set({ walletView: v }),
   setDepositAmt: (n) => set({ depositAmt: n }),
 
+  adjustBalance: async (delta) => {
+    const res = await fetch('/api/balance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ delta }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      set(s => ({ user: s.user ? { ...s.user, balance: data.balance } : s.user }));
+    }
+    return data;
+  },
+
   keepItem: (item, caseName) => {
     const entry: InventoryItem = {
       ...item,
@@ -262,10 +278,13 @@ export const useStore = create<Store>((set, get) => ({
     set(s => ({ inventory: [entry, ...s.inventory] }));
     get().flash('Item kept — check your Inventory!');
   },
-  sellItem: (inventoryId) => {
+  sellItem: (inventoryId, coinValue) => {
     const item = get().inventory.find(i => i.inventoryId === inventoryId);
+    const value = coinValue ?? parseFloat((item?.price ?? '0').replace(/,/g, '')) ?? 0;
     set(s => ({ inventory: s.inventory.filter(i => i.inventoryId !== inventoryId) }));
-    get().flash(`Sold for ${item?.price ?? '—'} coins`);
+    get().adjustBalance(value).then(() => {
+      get().flash(`Sold for ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} coins`);
+    });
   },
   withdrawItem: (inventoryId) => {
     get().flash('CSFloat withdrawal coming soon ✨');

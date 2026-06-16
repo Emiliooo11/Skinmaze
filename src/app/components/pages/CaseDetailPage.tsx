@@ -1,76 +1,114 @@
 'use client';
-import { useEffect, useRef } from 'react';
-import { useStore, UserInfo } from '@/app/store/useStore';
-import { randItem } from '@/app/lib/data';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useStore } from '@/app/store/useStore';
+import { randItem, ReelItem } from '@/app/lib/data';
+import { usdToCoins, fmtCoins } from '@/app/lib/currency';
 import { rollToItem } from '@/app/lib/provablyFair';
 import { CoinIcon } from '../CoinIcon';
 import { SkinImage } from '../SkinImage';
 
+const VITEM_H   = 140; // px per item in vertical reel
+const VITEM_GAP = 12;
+const VSTEP     = VITEM_H + VITEM_GAP;
+const VREEL_LEN = 28;
+const VWIN_IDX  = 22; // winning item lands at this index
+const VVP_H     = 380; // viewport height
+
+function buildReel(count: number): ReelItem[] {
+  return Array.from({ length: count }, () => randItem());
+}
+
+function parseCoin(s: string): number {
+  return parseFloat(s.replace(/,/g, '')) || 0;
+}
+
 export function CaseDetailPage() {
-  const { currentCase, phase, won, reel, multiplier, setMultiplier, go, flash,
-    startSpin, finishSpin, closeOpen, openAgain, keepItem, sellItem,
-    serverSeed, clientSeed, nonce, recordSpin, setLastSpinHash, openFairness, user, logged, openLogin } = useStore();
-  const reelRef = useRef<HTMLDivElement>(null);
-  const vpRef = useRef<HTMLDivElement>(null);
-  const spinTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const {
+    currentCase, phase, won, reel, multiplier, setMultiplier, go, flash,
+    startSpin, finishSpin, closeOpen, keepItem, sellItem, adjustBalance,
+    serverSeed, clientSeed, nonce, recordSpin, setLastSpinHash,
+    openFairness, user, logged, openLogin,
+  } = useStore();
+
+  // ── Single-case refs ──────────────────────────────────────────────────────
+  const reelRef  = useRef<HTMLDivElement>(null);
+  const vpRef    = useRef<HTMLDivElement>(null);
+  const spinTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const cc = currentCase || { name: 'Case', price: '15,343.09' };
+  // ── Multi-case local state ────────────────────────────────────────────────
+  const [multiSpinning, setMultiSpinning] = useState(false);
+  const [multiDone, setMultiDone]         = useState(false);
+  const [multiWon, setMultiWon]           = useState<ReelItem[]>([]);
+  const [multiReels, setMultiReels]       = useState<ReelItem[][]>([]);
+  const vReelRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const multiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function buildReel(count: number) {
-    return Array.from({ length: count }, () => randItem());
-  }
+  const cc = currentCase || { name: 'Case', price: fmtCoins(usdToCoins(1343.09)) };
+  const casePrice = parseCoin(cc.price);
+  const totalPrice = casePrice * multiplier;
+  const isMulti = multiplier > 1;
 
-  function doSpin(fast: boolean, demo = false) {
+  const spinning = isMulti ? multiSpinning : phase === 'spin';
+
+  // ── Single-case spin ──────────────────────────────────────────────────────
+  async function doSingleSpin(fast: boolean, demo = false) {
     if (phase === 'spin') return;
     if (!demo && !logged) { openLogin(); return; }
+
+    if (!demo) {
+      const result = await adjustBalance(-casePrice);
+      if ('error' in result && result.error === 'insufficient_balance') {
+        flash('Insufficient balance — deposit more coins!');
+        return;
+      }
+    }
+
     const newReel = buildReel(60);
-    const winIdx = 54;
-    const dur = fast ? 1.7 : 5.6;
+    const winIdx  = 54;
+    const dur     = fast ? 1.7 : 5.6;
     const spinNonce = nonce;
 
     rollToItem(serverSeed, clientSeed, spinNonce).then(wonItem => {
       newReel[winIdx] = wonItem;
       startSpin(newReel, wonItem);
-      setLastSpinHash(wonItem.hash);
-      recordSpin({ serverSeed, clientSeed, nonce: spinNonce, hash: wonItem.hash, item: `${wonItem.w} | ${wonItem.skin}`, price: wonItem.price });
+      setLastSpinHash((wonItem as any).hash);
+      recordSpin({ serverSeed, clientSeed, nonce: spinNonce, hash: (wonItem as any).hash, item: `${wonItem.w} | ${wonItem.skin}`, price: wonItem.price });
       useStore.setState(s => ({ nonce: s.nonce + 1 }));
 
-      // Record in wagers table for live ticker (real spins only)
-      if (demo) return;
-      const itemPrice = parseFloat(wonItem.price.replace(/,/g, '')) || 0;
-      const casePrice = parseFloat((currentCase?.price ?? '0').replace(/,/g, '')) || 0;
-      fetch('/api/recent-opens', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          case_name: currentCase?.name ?? 'Case',
-          amount: casePrice,
-          won_item: `${wonItem.w} | ${wonItem.skin}`,
-          won_item_image: wonItem.imageUrl || null,
-          won_item_color: wonItem.color || null,
-          won_value: itemPrice,
-          profit: itemPrice - casePrice,
-          player_name: user?.username ?? 'Anonymous',
-          player_avatar: user?.avatar ?? null,
-        }),
-      }).catch(() => {});
-
+      if (!demo) {
+        const itemPrice  = parseCoin(wonItem.price);
+        fetch('/api/recent-opens', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            case_name: currentCase?.name ?? 'Case',
+            amount: casePrice,
+            won_item: `${wonItem.w} | ${wonItem.skin}`,
+            won_item_image: wonItem.imageUrl || null,
+            won_item_color: wonItem.color || null,
+            won_value: itemPrice,
+            profit: itemPrice - casePrice,
+            player_name: user?.username ?? 'Anonymous',
+            player_avatar: user?.avatar ?? null,
+          }),
+        }).catch(() => {});
+      }
 
       if (startTimer.current) clearTimeout(startTimer.current);
       startTimer.current = setTimeout(() => {
-        const vp = vpRef.current;
+        const vp     = vpRef.current;
         const reelEl = reelRef.current;
         if (vp && reelEl) {
-          const step = 176;
+          const step   = 176;
           const center = vp.offsetWidth / 2;
           const jitter = Math.random() * 90 - 45;
           const offset = winIdx * step + step / 2 - center + jitter;
           reelEl.style.transition = 'none';
-          reelEl.style.transform = 'translateX(0px)';
+          reelEl.style.transform  = 'translateX(0px)';
           void reelEl.offsetWidth;
           reelEl.style.transition = `transform ${dur}s cubic-bezier(0.08,0.82,0.14,1)`;
-          reelEl.style.transform = `translateX(${-offset}px)`;
+          reelEl.style.transform  = `translateX(${-offset}px)`;
         }
         if (spinTimer.current) clearTimeout(spinTimer.current);
         spinTimer.current = setTimeout(() => finishSpin(), dur * 1000 + 150);
@@ -78,11 +116,115 @@ export function CaseDetailPage() {
     });
   }
 
+  // ── Multi-case spin ───────────────────────────────────────────────────────
+  async function doMultiSpin(demo = false) {
+    if (multiSpinning) return;
+    if (!demo && !logged) { openLogin(); return; }
+
+    if (!demo) {
+      const result = await adjustBalance(-totalPrice);
+      if ('error' in result && result.error === 'insufficient_balance') {
+        flash('Insufficient balance — deposit more coins!');
+        return;
+      }
+    }
+
+    const spinNonce = nonce;
+    const wonItems: ReelItem[] = await Promise.all(
+      Array.from({ length: multiplier }, (_, i) =>
+        rollToItem(serverSeed, clientSeed, spinNonce + i)
+      )
+    );
+    useStore.setState(s => ({ nonce: s.nonce + multiplier }));
+    wonItems.forEach((wi, i) => {
+      recordSpin({ serverSeed, clientSeed, nonce: spinNonce + i, hash: (wi as any).hash, item: `${wi.w} | ${wi.skin}`, price: wi.price });
+    });
+
+    const reels: ReelItem[][] = wonItems.map(wonItem => {
+      const r = buildReel(VREEL_LEN);
+      r[VWIN_IDX] = wonItem;
+      return r;
+    });
+
+    setMultiReels(reels);
+    setMultiWon(wonItems);
+    setMultiDone(false);
+
+    // Reset all reel positions
+    vReelRefs.current.forEach(el => {
+      if (el) { el.style.transition = 'none'; el.style.transform = 'translateY(0px)'; }
+    });
+
+    await new Promise(r => setTimeout(r, 60));
+
+    const dur    = 5.6;
+    const center = VVP_H / 2;
+
+    setMultiSpinning(true);
+
+    // Stagger start slightly per reel for a cascading feel
+    wonItems.forEach((_, idx) => {
+      setTimeout(() => {
+        const el = vReelRefs.current[idx];
+        if (!el) return;
+        const jitter = Math.random() * 30 - 15;
+        const offset = VWIN_IDX * VSTEP + VITEM_H / 2 - center + jitter;
+        el.style.transition = 'none';
+        el.style.transform  = 'translateY(0px)';
+        void el.offsetWidth;
+        el.style.transition = `transform ${dur}s cubic-bezier(0.08,0.82,0.14,1)`;
+        el.style.transform  = `translateY(${-offset}px)`;
+      }, idx * 80);
+    });
+
+    if (multiTimer.current) clearTimeout(multiTimer.current);
+    multiTimer.current = setTimeout(() => {
+      setMultiSpinning(false);
+      setMultiDone(true);
+
+      if (!demo) {
+        wonItems.forEach(wonItem => {
+          const itemPrice = parseCoin(wonItem.price);
+          fetch('/api/recent-opens', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              case_name: currentCase?.name ?? 'Case',
+              amount: casePrice,
+              won_item: `${wonItem.w} | ${wonItem.skin}`,
+              won_item_image: wonItem.imageUrl || null,
+              won_item_color: wonItem.color || null,
+              won_value: itemPrice,
+              profit: itemPrice - casePrice,
+              player_name: user?.username ?? 'Anonymous',
+              player_avatar: user?.avatar ?? null,
+            }),
+          }).catch(() => {});
+        });
+      }
+    }, dur * 1000 + multiplier * 80 + 200);
+  }
+
+  function doSpin(fast: boolean, demo = false) {
+    if (isMulti) return doMultiSpin(demo);
+    return doSingleSpin(fast, demo);
+  }
+
   function handleClose() {
-    if (spinTimer.current) clearTimeout(spinTimer.current);
+    if (spinTimer.current)  clearTimeout(spinTimer.current);
     if (startTimer.current) clearTimeout(startTimer.current);
     closeOpen();
     if (reelRef.current) { reelRef.current.style.transition = 'none'; reelRef.current.style.transform = ''; }
+  }
+
+  function handleMultiClose() {
+    if (multiTimer.current) clearTimeout(multiTimer.current);
+    setMultiDone(false);
+    setMultiWon([]);
+    setMultiReels([]);
+    vReelRefs.current.forEach(el => {
+      if (el) { el.style.transition = 'none'; el.style.transform = 'translateY(0px)'; }
+    });
   }
 
   function handleOpenAgain() {
@@ -90,14 +232,27 @@ export function CaseDetailPage() {
     setTimeout(() => doSpin(false), 80);
   }
 
-  useEffect(() => { return () => { if (spinTimer.current) clearTimeout(spinTimer.current); }; }, []);
+  function handleMultiOpenAgain() {
+    handleMultiClose();
+    setTimeout(() => doSpin(false), 80);
+  }
 
-  const displayReel = reel.length > 0 ? reel : buildReel(24);
-  const multBtns = [1, 2, 3, 4];
+  useEffect(() => {
+    return () => {
+      if (spinTimer.current)  clearTimeout(spinTimer.current);
+      if (multiTimer.current) clearTimeout(multiTimer.current);
+    };
+  }, []);
 
-  const dropItem = (i: number) => { const it = randItem(); return { ...it, pct: (Math.random() * 0.4 + 0.02).toFixed(2), key: 'drop' + i }; };
-  const bestDrops = Array.from({ length: 8 }, (_, i) => dropItem(i));
-  const itemsContains = Array.from({ length: 12 }, (_, i) => dropItem(i + 100));
+  const displayReel    = reel.length > 0 ? reel : buildReel(24);
+  const dropItem  = (i: number) => { const it = randItem(); return { ...it, pct: (Math.random() * 0.4 + 0.02).toFixed(2), key: 'drop' + i }; };
+  const bestDrops      = Array.from({ length: 8 }, (_, i) => dropItem(i));
+  const itemsContains  = Array.from({ length: 12 }, (_, i) => dropItem(i + 100));
+  const multBtns       = [1, 2, 3, 4];
+
+  const totalCoinsLabel = multiplier > 1
+    ? `${fmtCoins(totalPrice)} (${multiplier}×)`
+    : cc.price;
 
   return (
     <div>
@@ -119,36 +274,75 @@ export function CaseDetailPage() {
         </div>
       </div>
 
-      {/* Reel viewport */}
-      <div ref={vpRef} style={{ position: 'relative', height: 288, borderRadius: 16, overflow: 'hidden',
-        background: 'radial-gradient(ellipse at center,#0e1410,#070907)', border: '1px solid rgba(255,255,255,.06)' }}>
-        {/* Top/bottom markers */}
-        <div style={{ position: 'absolute', left: '50%', top: 6, transform: 'translateX(-50%)', zIndex: 5,
-          borderLeft: '9px solid transparent', borderRight: '9px solid transparent', borderTop: '12px solid #5fd75f' }} />
-        <div style={{ position: 'absolute', left: '50%', bottom: 6, transform: 'translateX(-50%)', zIndex: 5,
-          borderLeft: '9px solid transparent', borderRight: '9px solid transparent', borderBottom: '12px solid #5fd75f' }} />
-        {/* Fade edges */}
-        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 120, background: 'linear-gradient(90deg,#070907,transparent)', zIndex: 4, pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 120, background: 'linear-gradient(270deg,#070907,transparent)', zIndex: 4, pointerEvents: 'none' }} />
-        {/* Reel strip */}
-        <div ref={reelRef} style={{ display: 'flex', gap: 16, height: '100%', alignItems: 'center', padding: '0 24px', willChange: 'transform' }}>
-          {displayReel.map((t, i) => (
-            <div key={i} style={{ flex: '0 0 160px', height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: 150, height: 170, borderRadius: 14, background: `radial-gradient(circle at 50% 56%,${t.color}30,transparent 66%)`,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, border: `1px solid ${t.color}22` }}>
-                <SkinImage marketName={t.marketName} imageUrl={t.imageUrl} size={90} glowColor={t.color} />
-                <span style={{ fontSize: 10, fontWeight: 600, color: t.color }}>{t.skin}</span>
+      {/* ── SINGLE REEL (multiplier === 1) ────────────────────────────────── */}
+      {!isMulti && (
+        <div ref={vpRef} style={{ position: 'relative', height: 288, borderRadius: 16, overflow: 'hidden',
+          background: 'radial-gradient(ellipse at center,#0e1410,#070907)', border: '1px solid rgba(255,255,255,.06)' }}>
+          <div style={{ position: 'absolute', left: '50%', top: 6, transform: 'translateX(-50%)', zIndex: 5,
+            borderLeft: '9px solid transparent', borderRight: '9px solid transparent', borderTop: '12px solid #5fd75f' }} />
+          <div style={{ position: 'absolute', left: '50%', bottom: 6, transform: 'translateX(-50%)', zIndex: 5,
+            borderLeft: '9px solid transparent', borderRight: '9px solid transparent', borderBottom: '12px solid #5fd75f' }} />
+          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 120, background: 'linear-gradient(90deg,#070907,transparent)', zIndex: 4, pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 120, background: 'linear-gradient(270deg,#070907,transparent)', zIndex: 4, pointerEvents: 'none' }} />
+          <div ref={reelRef} style={{ display: 'flex', gap: 16, height: '100%', alignItems: 'center', padding: '0 24px', willChange: 'transform' }}>
+            {displayReel.map((t, i) => (
+              <div key={i} style={{ flex: '0 0 160px', height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 150, height: 170, borderRadius: 14, background: `radial-gradient(circle at 50% 56%,${t.color}30,transparent 66%)`,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, border: `1px solid ${t.color}22` }}>
+                  <SkinImage marketName={t.marketName} imageUrl={t.imageUrl} size={90} glowColor={t.color} />
+                  <span style={{ fontSize: 10, fontWeight: 600, color: t.color }}>{t.skin}</span>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ── MULTI REELS (multiplier > 1) ──────────────────────────────────── */}
+      {isMulti && (
+        <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden',
+          background: 'radial-gradient(ellipse at center,#0e1410,#070907)', border: '1px solid rgba(255,255,255,.06)',
+          display: 'flex', gap: 12, padding: '0 16px', height: VVP_H }}>
+
+          {/* Top/bottom gradient fades */}
+          <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 80, background: 'linear-gradient(180deg,#070907,transparent)', zIndex: 4, pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 80, background: 'linear-gradient(0deg,#070907,transparent)', zIndex: 4, pointerEvents: 'none' }} />
+
+          {/* Center marker lines */}
+          <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', transform: 'translateY(-1px)', height: 2, background: 'rgba(95,213,95,.5)', zIndex: 5, pointerEvents: 'none' }} />
+
+          {/* N vertical reels */}
+          {Array.from({ length: multiplier }, (_, colIdx) => {
+            const reelData = multiReels[colIdx] || buildReel(VREEL_LEN);
+            return (
+              <div key={colIdx} style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+                <div
+                  ref={el => { vReelRefs.current[colIdx] = el; }}
+                  style={{ display: 'flex', flexDirection: 'column', gap: VITEM_GAP, willChange: 'transform', paddingTop: 12 }}
+                >
+                  {reelData.map((t, i) => (
+                    <div key={i} style={{
+                      height: VITEM_H, flexShrink: 0, borderRadius: 12,
+                      background: `radial-gradient(circle at 50% 50%,${t.color}28,transparent 70%)`,
+                      border: `1px solid ${t.color}33`,
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
+                    }}>
+                      <SkinImage marketName={t.marketName} imageUrl={t.imageUrl} size={70} glowColor={t.color} />
+                      <span style={{ fontSize: 9, fontWeight: 600, color: t.color, textAlign: 'center', padding: '0 4px', lineHeight: 1.2 }}>{t.skin}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Controls */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, margin: '18px 0 22px', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 8 }}>
           {multBtns.map(n => (
-            <div key={n} onClick={() => setMultiplier(n)} style={{ width: 46, height: 46, borderRadius: 10,
+            <div key={n} onClick={() => { setMultiplier(n); handleMultiClose(); }} style={{ width: 46, height: 46, borderRadius: 10,
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 15, cursor: 'pointer',
               border: multiplier === n ? '1px solid rgba(95,213,95,.5)' : '1px solid rgba(255,255,255,.1)',
               background: multiplier === n ? 'rgba(95,213,95,.16)' : '#0e120e',
@@ -158,12 +352,14 @@ export function CaseDetailPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {logged ? (
             <>
-              <button onClick={() => doSpin(false)} disabled={phase === 'spin'} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 15,
+              <button onClick={() => doSpin(false)} disabled={spinning} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 15,
                 color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none',
-                padding: '14px 40px', borderRadius: 11, cursor: phase === 'spin' ? 'default' : 'pointer',
-                boxShadow: '0 8px 20px rgba(95,213,95,.3)', opacity: phase === 'spin' ? .6 : 1 }}>Open Case</button>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#10140f', border: '1px solid rgba(255,255,255,.1)', padding: '13px 20px', borderRadius: 11, fontWeight: 600 }}>
-                <CoinIcon size={16} />{cc.price}
+                padding: '14px 40px', borderRadius: 11, cursor: spinning ? 'default' : 'pointer',
+                boxShadow: '0 8px 20px rgba(95,213,95,.3)', opacity: spinning ? .6 : 1 }}>
+                {isMulti ? `Open ${multiplier} Cases` : 'Open Case'}
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#10140f', border: '1px solid rgba(255,255,255,.1)', padding: '13px 18px', borderRadius: 11, fontWeight: 600, fontSize: 14 }}>
+                <CoinIcon size={16} />{totalCoinsLabel}
               </div>
             </>
           ) : (
@@ -174,7 +370,7 @@ export function CaseDetailPage() {
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {logged && (
+          {logged && !isMulti && (
             <button onClick={() => doSpin(true)} title="Fast spin" style={{ width: 48, height: 46, borderRadius: 11,
               background: '#0e120e', border: '1px solid rgba(255,255,255,.1)', color: '#cfd4cf', cursor: 'pointer', fontSize: 15 }}>⏩</button>
           )}
@@ -217,7 +413,7 @@ export function CaseDetailPage() {
             <SkinImage marketName={d.marketName} imageUrl={d.imageUrl} size={90} glowColor={d.color} style={{ margin: '4px auto' }} />
             <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a' }}>{d.w}</div>
             <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 13, color: d.color }}>{d.skin}</div>
-            <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 5, fontSize: 13, color: '#cfd4cf' }}>
+            <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 5, fontSize: 13 }}>
               <CoinIcon size={13} />{d.price}
             </div>
           </div>
@@ -236,15 +432,15 @@ export function CaseDetailPage() {
             <SkinImage marketName={d.marketName} imageUrl={d.imageUrl} size={90} glowColor={d.color} style={{ margin: '4px auto' }} />
             <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a' }}>{d.w}</div>
             <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 13, color: d.color }}>{d.skin}</div>
-            <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 5, fontSize: 13, color: '#cfd4cf' }}>
+            <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 5, fontSize: 13 }}>
               <CoinIcon size={13} />{d.price}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Reveal overlay */}
-      {phase === 'done' && won && (
+      {/* ── Single result overlay ─────────────────────────────────────────── */}
+      {!isMulti && phase === 'done' && won && (
         <div className="anim-pop" style={{ position: 'fixed', inset: 0, zIndex: 100,
           background: 'rgba(4,6,4,.9)', backdropFilter: 'blur(7px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -275,7 +471,7 @@ export function CaseDetailPage() {
                 )}
               </div>
               <div style={{ display: 'flex', gap: 12, marginTop: 22 }}>
-                <button onClick={() => { closeOpen(); if (won) sellItem('__instant__'); flash(`Sold for ${won.price} coins`); }}
+                <button onClick={() => { closeOpen(); if (won) { const v = parseCoin(won.price); sellItem('__instant__', v); } }}
                   style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '12px 24px', borderRadius: 11, cursor: 'pointer' }}>
                   Sell for {won.price}
                 </button>
@@ -286,6 +482,72 @@ export function CaseDetailPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Multi result overlay ──────────────────────────────────────────── */}
+      {isMulti && multiDone && multiWon.length > 0 && (
+        <div className="anim-pop" style={{ position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(4,6,4,.92)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, overflowY: 'auto' }}>
+          <div style={{ width: 'min(880px,98vw)', background: '#0a0d0a', border: '1px solid rgba(255,255,255,.08)',
+            borderRadius: 22, padding: '28px 28px 24px', boxShadow: '0 40px 100px rgba(0,0,0,.8)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
+              <div>
+                <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 18 }}>You unboxed {multiplier} items!</div>
+                <div style={{ fontSize: 12, color: '#9aa39a', marginTop: 2 }}>{cc.name}</div>
+              </div>
+              <button onClick={handleMultiClose} style={{ width: 38, height: 38, borderRadius: 10, background: '#11140f', border: '1px solid rgba(255,255,255,.1)', color: '#cfd4cf', fontSize: 18, cursor: 'pointer' }}>✕</button>
+            </div>
+
+            {/* Item cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${multiplier}, 1fr)`, gap: 14, marginBottom: 24 }}>
+              {multiWon.map((item, i) => (
+                <div key={i} style={{ borderRadius: 14, background: '#0c100c', border: `1px solid ${item.color}55`,
+                  boxShadow: `0 0 30px -8px ${item.color}`, padding: '16px 12px', textAlign: 'center' }}>
+                  <SkinImage marketName={item.marketName} imageUrl={item.imageUrl} size={100} glowColor={item.color} style={{ margin: '0 auto 10px' }} />
+                  <div style={{ fontSize: 11, color: '#9aa39a' }}>{item.w}</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: item.color, margin: '2px 0' }}>{item.skin}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 6, fontWeight: 600, fontSize: 13 }}>
+                    <CoinIcon size={12} />{item.price}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Total + actions */}
+            {(() => {
+              const totalVal = multiWon.reduce((s, i) => s + parseCoin(i.price), 0);
+              return (
+                <>
+                  <div style={{ background: '#0e120e', border: '1px solid rgba(255,255,255,.07)', borderRadius: 12,
+                    padding: '14px 20px', marginBottom: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: '#9aa39a' }}>Total value</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 17 }}>
+                      <CoinIcon size={16} />{fmtCoins(totalVal)}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    <button onClick={() => { sellItem('__multi__', totalVal); handleMultiClose(); }}
+                      style={{ flex: 1, fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a',
+                        background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '13px 20px', borderRadius: 11, cursor: 'pointer' }}>
+                      Sell All — {fmtCoins(totalVal)} coins
+                    </button>
+                    <button onClick={handleMultiOpenAgain}
+                      style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#cfd4cf',
+                        background: '#10140f', border: '1px solid rgba(255,255,255,.12)', padding: '13px 22px', borderRadius: 11, cursor: 'pointer' }}>
+                      Open Again
+                    </button>
+                    <button onClick={() => { multiWon.forEach(item => keepItem(item, cc.name)); handleMultiClose(); }}
+                      style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#7fe877',
+                        background: 'rgba(95,213,95,.1)', border: '1px solid rgba(95,213,95,.3)', padding: '13px 22px', borderRadius: 11, cursor: 'pointer' }}>
+                      Keep All
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

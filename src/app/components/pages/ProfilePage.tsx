@@ -391,7 +391,7 @@ function InventoryTab() {
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
-                    onClick={() => sellItem(item.inventoryId)}
+                    onClick={() => { const v = parseFloat(item.price.replace(/,/g, '')) || 0; sellItem(item.inventoryId, v); }}
                     style={{ flex: 1, fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 12,
                       color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)',
                       border: 'none', padding: '9px 0', borderRadius: 9, cursor: 'pointer' }}>

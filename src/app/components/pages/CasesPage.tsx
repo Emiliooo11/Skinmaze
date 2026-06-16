@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useStore } from '@/app/store/useStore';
 import { buildCasesAll, CASE_TABS, CaseItem } from '@/app/lib/data';
 import { fetchCases } from '@/app/lib/db';
+import { usdToCoins, fmtCoins } from '@/app/lib/currency';
 import { CoinIcon } from '../CoinIcon';
 import { Placeholder } from '../Placeholder';
 import { RarityBar } from '../RarityBar';
@@ -11,7 +12,7 @@ function dbCasesToCaseItems(dbCases: Awaited<ReturnType<typeof fetchCases>>): Ca
   return dbCases.map(c => ({
     id: c.id,
     name: c.name,
-    price: c.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    price: fmtCoins(usdToCoins(c.price)),
     image: c.image_url || '/cases/case-water-camo.png',
   }));
 }

@@ -1,3 +1,5 @@
+import { usdToCoins, fmtCoins } from './currency';
+
 export type Rarity = 'blue' | 'purple' | 'pink' | 'red' | 'gold';
 export type Category = 'Knifes' | 'Pistol' | 'Rifle' | 'Sniper' | 'SMG' | 'Shotgun' | 'Machinegun' | 'Gloves';
 
@@ -124,20 +126,24 @@ export const MP_CATS: Array<[string, string]> = [
 ];
 
 export function fmt(n: number): string {
-  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return fmtCoins(n);
 }
+
+// USD prices for cases — converted to coins at display time
+const CASE_USD_PRICES = [1343.09, 289.50, 742.10, 99.99, 1899.00, 45.20, 512.75, 210.40, 1620.00, 388.90];
 
 export function priceForCase(i: number): number {
-  const base = [1343.09, 289.50, 742.10, 99.99, 1899.00, 45.20, 512.75, 210.40, 1620.00, 388.90];
-  return base[i % base.length];
+  return usdToCoins(CASE_USD_PRICES[i % CASE_USD_PRICES.length]);
 }
 
+// USD price ranges per rarity — returned as coins
 export function priceFor(rar: Rarity): number {
   const r: Record<Rarity, [number, number]> = {
     gold: [3200, 18000], red: [800, 4200], pink: [300, 1200], purple: [80, 420], blue: [5, 70],
   };
   const [lo, hi] = r[rar];
-  return +(lo + Math.random() * (hi - lo)).toFixed(2);
+  const usd = +(lo + Math.random() * (hi - lo)).toFixed(2);
+  return usdToCoins(usd);
 }
 
 export function pickRar(): Rarity {
