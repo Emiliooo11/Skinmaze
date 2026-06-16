@@ -12,22 +12,10 @@ const METHODS = [
 const AMT_CHIPS = [10, 25, 50, 100, 250, 500];
 
 export function WalletPage() {
-  const { walletTab, setWalletTab, walletView, setWalletView, depositAmt, setDepositAmt, flash } = useStore();
+  const { walletView, setWalletView, depositAmt, setDepositAmt, flash } = useStore();
 
   return (
     <div>
-      {/* Deposit/Withdraw tabs */}
-      <div style={{ display: 'flex', justifyContent: 'center', margin: '6px 0 30px' }}>
-        <div style={{ display: 'flex', background: '#0e120e', border: '1px solid rgba(255,255,255,.08)', borderRadius: 13, padding: 5, gap: 4 }}>
-          <span onClick={() => setWalletTab('deposit')} style={{ padding: '11px 40px', borderRadius: 9, fontWeight: 600, fontSize: 14, cursor: 'pointer',
-            background: walletTab === 'deposit' ? '#46c041' : 'transparent',
-            color: walletTab === 'deposit' ? '#06270a' : '#9aa39a' }}>Deposit</span>
-          <span onClick={() => setWalletTab('withdraw')} style={{ padding: '11px 40px', borderRadius: 9, fontWeight: 600, fontSize: 14, cursor: 'pointer',
-            background: walletTab === 'withdraw' ? '#46c041' : 'transparent',
-            color: walletTab === 'withdraw' ? '#06270a' : '#9aa39a' }}>Withdraw</span>
-        </div>
-      </div>
-
       {/* Methods view */}
       {walletView === 'methods' && (
         <div>
