@@ -1,10 +1,12 @@
 'use client';
 import { useStore } from '@/app/store/useStore';
-import type { ProfileTab } from '@/app/store/useStore';
+import type { ProfileTab, InventoryItem } from '@/app/store/useStore';
 import { CoinIcon } from '../CoinIcon';
+import { SkinImage } from '../SkinImage';
 
 const PROFILE_TABS: Array<{ key: ProfileTab | 'verify' | 'logout'; label: string; icon: string }> = [
-  { key: 'settings', label: 'Setting', icon: '⚙️' },
+  { key: 'inventory', label: 'Inventory', icon: '🎒' },
+  { key: 'settings', label: 'Settings', icon: '⚙️' },
   { key: 'security', label: 'Security', icon: '🔒' },
   { key: 'affiliate', label: 'Affiliate', icon: '💀' },
   { key: 'transactions', label: 'Transactions', icon: '🧾' },
@@ -81,6 +83,9 @@ export function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* Inventory tab */}
+        {profileTab === 'inventory' && <InventoryTab />}
 
         {/* Settings tab */}
         {profileTab === 'settings' && (
@@ -276,6 +281,138 @@ export function ProfilePage() {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── Inventory Tab ─────────────────────────────────────────────────────────────
+
+const RARITY_LABEL: Record<string, string> = {
+  blue: 'Mil-Spec', purple: 'Restricted', pink: 'Classified', red: 'Covert', gold: 'Extraordinary',
+};
+const RARITY_COLOR: Record<string, string> = {
+  blue: '#4b69ff', purple: '#8847ff', pink: '#d32ce6', red: '#eb4b4b', gold: '#e6c33e',
+};
+
+function InventoryTab() {
+  const { inventory, sellItem, withdrawItem, flash, goProfile } = useStore();
+
+  if (inventory.length === 0) {
+    return (
+      <div style={{ background: '#0b0e0a', border: '1px solid rgba(255,255,255,.07)', borderRadius: 16,
+        padding: '60px 24px', textAlign: 'center' }}>
+        <div style={{ fontSize: 40, marginBottom: 14 }}>🎒</div>
+        <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 18, marginBottom: 8 }}>
+          Your inventory is empty
+        </div>
+        <div style={{ color: '#6b746b', fontSize: 13, marginBottom: 24 }}>
+          Open a case and click <strong style={{ color: '#7fe877' }}>Keep</strong> to save items here.
+        </div>
+      </div>
+    );
+  }
+
+  const totalValue = inventory.reduce((sum, item) => {
+    const price = parseFloat(item.price.replace(/,/g, '')) || 0;
+    return sum + price;
+  }, 0);
+
+  return (
+    <div>
+      {/* Summary bar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: '#0b0e0a', border: '1px solid rgba(255,255,255,.07)', borderRadius: 14,
+        padding: '14px 20px', marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: '#9aa39a' }}>
+          <span style={{ fontSize: 18 }}>🎒</span>
+          <strong style={{ color: '#e8ece8' }}>{inventory.length}</strong> item{inventory.length !== 1 ? 's' : ''}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 14, color: '#9aa39a' }}>
+          Total value:
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 700, fontSize: 16, color: '#7fe877' }}>
+            <CoinIcon size={16} />{totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        </div>
+      </div>
+
+      {/* Item grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
+        {inventory.map(item => {
+          const color = RARITY_COLOR[item.rar] ?? '#4b69ff';
+          const dateStr = new Date(item.openedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+          return (
+            <div key={item.inventoryId} style={{
+              background: '#0b0e0a',
+              border: `1px solid ${color}44`,
+              borderRadius: 14,
+              overflow: 'hidden',
+              position: 'relative',
+            }}>
+              {/* Rarity stripe */}
+              <div style={{ height: 3, background: color }} />
+
+              <div style={{ padding: '14px 14px 12px' }}>
+                {/* Rarity badge */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color, background: `${color}18`,
+                    border: `1px solid ${color}44`, borderRadius: 5, padding: '2px 8px' }}>
+                    {RARITY_LABEL[item.rar] ?? item.rar}
+                  </span>
+                  <span style={{ fontSize: 10, color: '#4a7a4a' }}>{dateStr}</span>
+                </div>
+
+                {/* Image */}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
+                  <SkinImage
+                    marketName={item.marketName}
+                    imageUrl={item.imageUrl}
+                    size={120}
+                    glowColor={color}
+                  />
+                </div>
+
+                {/* Name */}
+                <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a', marginBottom: 2 }}>{item.w}</div>
+                <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 14, color, marginBottom: 2, lineHeight: 1.3 }}>
+                  {item.skin}
+                </div>
+                <div style={{ textAlign: 'center', fontSize: 11, color: '#4a7a4a', marginBottom: 6 }}>
+                  from <span style={{ color: '#6b746b' }}>{item.caseName}</span>
+                </div>
+
+                {/* Price */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  fontWeight: 700, fontSize: 15, marginBottom: 14 }}>
+                  <CoinIcon size={15} />
+                  <span>{item.price}</span>
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => sellItem(item.inventoryId)}
+                    style={{ flex: 1, fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 12,
+                      color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)',
+                      border: 'none', padding: '9px 0', borderRadius: 9, cursor: 'pointer' }}>
+                    Sell
+                  </button>
+                  <button
+                    onClick={() => withdrawItem(item.inventoryId)}
+                    style={{ flex: 1, fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 12,
+                      color: '#9aa39a', background: '#0e120e',
+                      border: '1px solid rgba(255,255,255,.1)', padding: '9px 0', borderRadius: 9, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                    <span style={{ fontSize: 11 }}>🔗</span> Withdraw
+                  </button>
+                </div>
+                <div style={{ textAlign: 'center', fontSize: 9, color: '#3a4a3a', marginTop: 6 }}>
+                  via CSFloat → Steam
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

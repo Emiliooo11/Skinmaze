@@ -1,7 +1,62 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
-import { useStore } from '@/app/store/useStore';
-import { CASE_IMAGES, RAR, Rarity } from '@/app/lib/data';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { CASE_IMAGES, RAR, Rarity, buildCasesAll, CaseItem } from '@/app/lib/data';
+
+// ── Home layout config ────────────────────────────────────────────────────────
+
+export interface HomeSection {
+  id: string;
+  title: string;
+  icon: string;
+  caseIds: number[];
+}
+
+export const HOME_LAYOUT_KEY = 'sm_home_layout';
+
+export const DEFAULT_HOME_LAYOUT: HomeSection[] = [
+  { id: 'section1', title: 'Knives Collection',      icon: '🔪', caseIds: [0,1,2,3,4] },
+  { id: 'section2', title: 'Gloves Collection',      icon: '🧤', caseIds: [15,16,17,18,19] },
+  { id: 'section3', title: 'Ruby Knifes Collection', icon: '🍁', caseIds: [1,2,3,4,5] },
+  { id: 'section4', title: 'Best Sellers',           icon: '⭐', caseIds: [2,3,4,5,6] },
+];
+
+function loadHomeLayout(): HomeSection[] {
+  try { return JSON.parse(localStorage.getItem(HOME_LAYOUT_KEY) || 'null') || DEFAULT_HOME_LAYOUT; }
+  catch { return DEFAULT_HOME_LAYOUT; }
+}
+
+function saveHomeLayout(layout: HomeSection[]) {
+  localStorage.setItem(HOME_LAYOUT_KEY, JSON.stringify(layout));
+}
+
+// ── Image library (collections) ──────────────────────────────────────────────
+
+interface ImageCollection {
+  id: string;
+  name: string;
+  images: string[]; // file path or base64 data URL
+}
+
+const LIB_KEY = 'sm_case_image_lib';
+
+const DEFAULT_COLLECTIONS: ImageCollection[] = [
+  {
+    id: 'classic',
+    name: 'Classic Cases',
+    images: [...CASE_IMAGES],
+  },
+];
+
+function loadCollections(): ImageCollection[] {
+  try {
+    const stored = JSON.parse(localStorage.getItem(LIB_KEY) || 'null');
+    return stored || DEFAULT_COLLECTIONS;
+  } catch { return DEFAULT_COLLECTIONS; }
+}
+
+function saveCollections(cols: ImageCollection[]) {
+  localStorage.setItem(LIB_KEY, JSON.stringify(cols));
+}
 
 interface SteamSkin {
   id: string;
@@ -81,12 +136,27 @@ const RAR_DEFAULT_CHANCE: Record<Rarity, number> = {
 };
 
 export function AdminPage() {
-  const { go } = useStore();
-  const [view, setView] = useState<'list' | 'builder'>('list');
+  const [view, setView] = useState<'list' | 'builder' | 'library' | 'homelayout'>('list');
   const [cases, setCases] = useState<AdminCase[]>([]);
   const [editing, setEditing] = useState<AdminCase | null>(null);
+  const [collections, setCollections] = useState<ImageCollection[]>([]);
+  const [homeLayout, setHomeLayout] = useState<HomeSection[]>([]);
 
-  useEffect(() => { setCases(loadCases()); }, []);
+  useEffect(() => {
+    setCases(loadCases());
+    setCollections(loadCollections());
+    setHomeLayout(loadHomeLayout());
+  }, []);
+
+  function updateCollections(cols: ImageCollection[]) {
+    setCollections(cols);
+    saveCollections(cols);
+  }
+
+  function updateHomeLayout(layout: HomeSection[]) {
+    setHomeLayout(layout);
+    saveHomeLayout(layout);
+  }
 
   function saveCase(c: AdminCase) {
     const next = cases.some(x => x.id === c.id)
@@ -120,8 +190,29 @@ export function AdminPage() {
     return (
       <CaseBuilder
         initial={editing}
+        collections={collections}
         onSave={c => { saveCase(c); setEditing(null); setView('list'); }}
         onBack={() => { setEditing(null); setView('list'); }}
+      />
+    );
+  }
+
+  if (view === 'library') {
+    return (
+      <LibraryManager
+        collections={collections}
+        onChange={updateCollections}
+        onBack={() => setView('list')}
+      />
+    );
+  }
+
+  if (view === 'homelayout') {
+    return (
+      <HomeLayoutManager
+        layout={homeLayout}
+        onChange={updateHomeLayout}
+        onBack={() => setView('list')}
       />
     );
   }
@@ -130,13 +221,22 @@ export function AdminPage() {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <div onClick={() => go('home')} style={{ color: '#9aa39a', fontSize: 13, cursor: 'pointer', marginBottom: 6 }}>‹ Back to site</div>
-          <h1 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 24, margin: 0 }}>Admin — Case Builder</h1>
+          <h1 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 24, margin: 0 }}>Case Builder</h1>
         </div>
-        <button onClick={newCase} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a',
-          background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '12px 28px', borderRadius: 11, cursor: 'pointer' }}>
-          + New Case
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => setView('homelayout')} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#9aa39a',
+            background: '#0e120e', border: '1px solid rgba(255,255,255,.1)', padding: '11px 22px', borderRadius: 11, cursor: 'pointer' }}>
+            🏠 Home Layout
+          </button>
+          <button onClick={() => setView('library')} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#9aa39a',
+            background: '#0e120e', border: '1px solid rgba(255,255,255,.1)', padding: '11px 22px', borderRadius: 11, cursor: 'pointer' }}>
+            🗂 Image Library
+          </button>
+          <button onClick={newCase} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a',
+            background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '12px 28px', borderRadius: 11, cursor: 'pointer' }}>
+            + New Case
+          </button>
+        </div>
       </div>
 
       {cases.length === 0 ? (
@@ -194,7 +294,7 @@ const RAR_CHIPS = [
 
 const PAGE_SIZE = 48;
 
-function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: (c: AdminCase) => void; onBack: () => void }) {
+function CaseBuilder({ initial, collections, onSave, onBack }: { initial: AdminCase; collections: ImageCollection[]; onSave: (c: AdminCase) => void; onBack: () => void }) {
   const [draft, setDraft] = useState<AdminCase>(initial);
   const [query, setQuery] = useState('');
   const [catFilter, setCatFilter] = useState('');
@@ -362,15 +462,34 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
             <Label>Case Name</Label>
             <Input value={draft.name} onChange={v => setDraft(d => ({ ...d, name: v }))} placeholder="e.g. Pandora Box" />
             <Label>Case Image</Label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
-              {CASE_IMAGES.map(img => (
-                <div key={img} onClick={() => setDraft(d => ({ ...d, image: img }))}
-                  style={{ borderRadius: 10, padding: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: draft.image === img ? 'rgba(95,213,95,.14)' : '#0e120e',
-                    border: `1px solid ${draft.image === img ? 'rgba(95,213,95,.5)' : 'rgba(255,255,255,.07)'}` }}>
-                  <img src={img} style={{ height: 48, objectFit: 'contain' }} />
+            <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {collections.map(col => (
+                <div key={col.id}>
+                  <div style={{ fontSize: 10, color: '#4a7a4a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 7, fontWeight: 600 }}>
+                    {col.name}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 7 }}>
+                    {col.images.map((img, i) => (
+                      <div key={i} onClick={() => setDraft(d => ({ ...d, image: img }))}
+                        style={{ borderRadius: 9, padding: 5, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: draft.image === img ? 'rgba(95,213,95,.14)' : '#0e120e',
+                          border: `1px solid ${draft.image === img ? 'rgba(95,213,95,.5)' : 'rgba(255,255,255,.07)'}` }}>
+                        <img src={img} style={{ height: 44, objectFit: 'contain' }} onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = '0.2'; }} />
+                      </div>
+                    ))}
+                    {col.images.length === 0 && (
+                      <div style={{ gridColumn: '1/-1', fontSize: 11, color: '#4a7a4a', textAlign: 'center', padding: '8px 0' }}>
+                        No images — add from Image Library
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
+              {collections.length === 0 && (
+                <div style={{ fontSize: 12, color: '#4a7a4a', textAlign: 'center', padding: 16 }}>
+                  No collections yet. Go to Image Library to create one.
+                </div>
+              )}
             </div>
           </div>
 
@@ -671,6 +790,310 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Home Layout Manager ───────────────────────────────────────────────────────
+
+const ALL_CASES = buildCasesAll();
+
+function HomeLayoutManager({ layout, onChange, onBack }: {
+  layout: HomeSection[];
+  onChange: (l: HomeSection[]) => void;
+  onBack: () => void;
+}) {
+  const [pickingFor, setPickingFor] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  function updateSection(id: string, patch: Partial<HomeSection>) {
+    onChange(layout.map(s => s.id === id ? { ...s, ...patch } : s));
+  }
+
+  function toggleCase(sectionId: string, caseId: number) {
+    const section = layout.find(s => s.id === sectionId)!;
+    const has = section.caseIds.includes(caseId);
+    const next = has
+      ? section.caseIds.filter(x => x !== caseId)
+      : section.caseIds.length < 5
+        ? [...section.caseIds, caseId]
+        : section.caseIds;
+    updateSection(sectionId, { caseIds: next });
+  }
+
+  function handleSave() {
+    onChange(layout);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  function resetSection(id: string) {
+    const def = DEFAULT_HOME_LAYOUT.find(s => s.id === id);
+    if (def) updateSection(id, { ...def });
+  }
+
+  const SECTION_LABELS = ['1st', '2nd', '3rd', '4th'];
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#9aa39a', fontSize: 13, cursor: 'pointer' }}>‹ Back</button>
+        <h1 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 22, margin: 0, flex: 1 }}>Home Layout</h1>
+        <button onClick={handleSave}
+          style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14,
+            color: saved ? '#3ad48f' : '#06270a',
+            background: saved ? 'rgba(58,212,143,.15)' : 'linear-gradient(160deg,#74e36b,#46c041)',
+            border: saved ? '1px solid rgba(58,212,143,.4)' : 'none',
+            padding: '11px 26px', borderRadius: 11, cursor: 'pointer', transition: 'all .2s' }}>
+          {saved ? '✓ Saved' : 'Save Layout'}
+        </button>
+      </div>
+
+      <div style={{ fontSize: 13, color: '#6b746b', marginBottom: 20, padding: '10px 16px',
+        background: '#0b0e0a', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10 }}>
+        Configure which cases appear in each of the 4 homepage sections. Each section shows up to 5 cases.
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {layout.map((section, idx) => (
+          <div key={section.id} style={{ background: '#0b0e0a', border: '1px solid rgba(255,255,255,.07)', borderRadius: 16, padding: 20 }}>
+            {/* Section header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+              <div style={{ background: 'rgba(95,213,95,.12)', border: '1px solid rgba(95,213,95,.2)',
+                borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 700, color: '#7fe877', whiteSpace: 'nowrap' }}>
+                {SECTION_LABELS[idx]} Section
+              </div>
+              <input
+                value={section.icon}
+                onChange={e => updateSection(section.id, { icon: e.target.value })}
+                style={{ width: 40, background: '#0e120e', border: '1px solid rgba(255,255,255,.1)',
+                  borderRadius: 8, padding: '7px', color: '#e8ece8', fontSize: 16, outline: 'none', textAlign: 'center' }}
+              />
+              <input
+                value={section.title}
+                onChange={e => updateSection(section.id, { title: e.target.value })}
+                style={{ flex: 1, background: '#0e120e', border: '1px solid rgba(255,255,255,.1)',
+                  borderRadius: 9, padding: '9px 14px', color: '#e8ece8', fontFamily: 'var(--font-poppins)',
+                  fontWeight: 700, fontSize: 15, outline: 'none' }}
+              />
+              <span style={{ fontSize: 12, color: '#4a7a4a', whiteSpace: 'nowrap' }}>
+                {section.caseIds.length}/5 cases
+              </span>
+              <button onClick={() => resetSection(section.id)}
+                style={{ padding: '6px 12px', borderRadius: 8, background: '#0e120e',
+                  border: '1px solid rgba(255,255,255,.08)', color: '#6b746b', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                Reset
+              </button>
+            </div>
+
+            {/* Selected cases preview */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10, marginBottom: 14 }}>
+              {section.caseIds.map(cid => {
+                const c = ALL_CASES[cid];
+                if (!c) return null;
+                return (
+                  <div key={cid} style={{ position: 'relative', background: '#0e120e',
+                    border: '1px solid rgba(95,213,95,.25)', borderRadius: 11, padding: 10, textAlign: 'center' }}>
+                    <img src={c.image} alt={c.name} style={{ height: 60, objectFit: 'contain',
+                      filter: 'drop-shadow(0 3px 8px rgba(0,0,0,.6))', marginBottom: 6 }}
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = '0.2'; }} />
+                    <div style={{ fontSize: 10, color: '#cfd4cf', fontWeight: 600, lineHeight: 1.3 }}>{c.name}</div>
+                    <button onClick={() => toggleCase(section.id, cid)}
+                      style={{ position: 'absolute', top: 5, right: 5, width: 18, height: 18, borderRadius: 5,
+                        background: 'rgba(26,16,20,.9)', border: '1px solid rgba(235,75,75,.3)',
+                        color: '#eb4b4b', fontSize: 10, cursor: 'pointer', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>✕</button>
+                  </div>
+                );
+              })}
+              {section.caseIds.length < 5 && (
+                <div
+                  onClick={() => setPickingFor(pickingFor === section.id ? null : section.id)}
+                  style={{ border: '2px dashed rgba(95,213,95,.2)', borderRadius: 11, padding: 10,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column',
+                    gap: 4, cursor: 'pointer', color: '#4a7a4a', fontSize: 12,
+                    background: pickingFor === section.id ? 'rgba(95,213,95,.06)' : 'transparent' }}>
+                  <span style={{ fontSize: 20 }}>+</span>
+                  <span>Add case</span>
+                </div>
+              )}
+            </div>
+
+            {/* Case picker (expanded) */}
+            {pickingFor === section.id && (
+              <div style={{ borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
+                <div style={{ fontSize: 11, color: '#4a7a4a', marginBottom: 10 }}>
+                  Click a case to add it to this section
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(110px,1fr))', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
+                  {ALL_CASES.map(c => {
+                    const selected = section.caseIds.includes(c.id);
+                    return (
+                      <div key={c.id}
+                        onClick={() => !selected && toggleCase(section.id, c.id)}
+                        style={{ background: selected ? 'rgba(95,213,95,.1)' : '#0e120e',
+                          border: `1px solid ${selected ? 'rgba(95,213,95,.4)' : 'rgba(255,255,255,.06)'}`,
+                          borderRadius: 9, padding: 8, textAlign: 'center', cursor: selected ? 'default' : 'pointer',
+                          opacity: selected ? 0.55 : 1, transition: 'all .12s' }}>
+                        <img src={c.image} alt={c.name}
+                          style={{ height: 48, objectFit: 'contain', filter: 'drop-shadow(0 2px 6px rgba(0,0,0,.5))' }}
+                          onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = '0.2'; }} />
+                        <div style={{ fontSize: 9, color: '#9aa39a', marginTop: 4, lineHeight: 1.3 }}>{c.name}</div>
+                        {selected && <div style={{ fontSize: 9, color: '#7fe877', fontWeight: 700 }}>✓ Added</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Library Manager ──────────────────────────────────────────────────────────
+
+function LibraryManager({ collections, onChange, onBack }: {
+  collections: ImageCollection[];
+  onChange: (cols: ImageCollection[]) => void;
+  onBack: () => void;
+}) {
+  const [newName, setNewName] = useState('');
+  const [editingName, setEditingName] = useState<Record<string, string>>({});
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  function addCollection() {
+    if (!newName.trim()) return;
+    const col: ImageCollection = { id: Date.now().toString(), name: newName.trim(), images: [] };
+    onChange([...collections, col]);
+    setNewName('');
+  }
+
+  function deleteCollection(id: string) {
+    onChange(collections.filter(c => c.id !== id));
+  }
+
+  function renameCollection(id: string, name: string) {
+    onChange(collections.map(c => c.id === id ? { ...c, name } : c));
+  }
+
+  function removeImage(colId: string, idx: number) {
+    onChange(collections.map(c => c.id === colId ? { ...c, images: c.images.filter((_, i) => i !== idx) } : c));
+  }
+
+  function handleFiles(colId: string, files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const readers = Array.from(files).map(file => new Promise<string>(resolve => {
+      const r = new FileReader();
+      r.onload = e => resolve(e.target?.result as string);
+      r.readAsDataURL(file);
+    }));
+    Promise.all(readers).then(urls => {
+      onChange(collections.map(c => c.id === colId ? { ...c, images: [...c.images, ...urls] } : c));
+    });
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#9aa39a', fontSize: 13, cursor: 'pointer' }}>‹ Back</button>
+        <h1 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 22, margin: 0, flex: 1 }}>Image Library</h1>
+      </div>
+
+      {/* Create collection */}
+      <div style={{ background: '#0b0e0a', border: '1px solid rgba(255,255,255,.07)', borderRadius: 14, padding: 18, marginBottom: 24 }}>
+        <div style={{ fontWeight: 600, fontSize: 13, color: '#cfd4cf', marginBottom: 12 }}>New Collection</div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <input
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addCollection()}
+            placeholder="Collection name, e.g. Knife Cases"
+            style={{ flex: 1, background: '#0e120e', border: '1px solid rgba(255,255,255,.1)', borderRadius: 9,
+              padding: '10px 14px', color: '#e8ece8', fontFamily: 'var(--font-outfit)', fontSize: 13, outline: 'none' }}
+          />
+          <button onClick={addCollection}
+            style={{ fontWeight: 700, fontSize: 14, color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)',
+              border: 'none', padding: '0 22px', borderRadius: 10, cursor: 'pointer' }}>
+            + Create
+          </button>
+        </div>
+      </div>
+
+      {collections.length === 0 && (
+        <div style={{ textAlign: 'center', padding: 60, color: '#6b746b', fontSize: 13 }}>
+          No collections yet. Create one above.
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {collections.map(col => (
+          <div key={col.id} style={{ background: '#0b0e0a', border: '1px solid rgba(255,255,255,.07)', borderRadius: 16, padding: 20 }}>
+            {/* Collection header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <input
+                value={editingName[col.id] ?? col.name}
+                onChange={e => setEditingName(n => ({ ...n, [col.id]: e.target.value }))}
+                onBlur={() => {
+                  const name = editingName[col.id];
+                  if (name !== undefined && name.trim()) renameCollection(col.id, name.trim());
+                  setEditingName(n => { const copy = { ...n }; delete copy[col.id]; return copy; });
+                }}
+                style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,.1)',
+                  color: '#e8ece8', fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 16, outline: 'none', padding: '4px 0' }}
+              />
+              <span style={{ fontSize: 12, color: '#4a7a4a' }}>{col.images.length} image{col.images.length !== 1 ? 's' : ''}</span>
+              <button
+                onClick={() => fileRefs.current[col.id]?.click()}
+                style={{ padding: '7px 16px', borderRadius: 9, background: '#1c241b', border: '1px solid rgba(95,213,95,.25)',
+                  color: '#7fe877', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                + Upload Images
+              </button>
+              <input
+                ref={el => { fileRefs.current[col.id] = el; }}
+                type="file" accept="image/*" multiple style={{ display: 'none' }}
+                onChange={e => handleFiles(col.id, e.target.files)}
+              />
+              {col.id !== 'classic' && (
+                <button onClick={() => deleteCollection(col.id)}
+                  style={{ width: 32, height: 32, borderRadius: 8, background: '#1a1014', border: '1px solid rgba(235,75,75,.2)',
+                    color: '#eb4b4b', fontSize: 14, cursor: 'pointer', flexShrink: 0 }}>
+                  🗑
+                </button>
+              )}
+            </div>
+
+            {/* Image grid */}
+            {col.images.length === 0 ? (
+              <div
+                onClick={() => fileRefs.current[col.id]?.click()}
+                style={{ border: '2px dashed rgba(255,255,255,.08)', borderRadius: 12, padding: '32px 0',
+                  textAlign: 'center', color: '#4a7a4a', fontSize: 13, cursor: 'pointer' }}>
+                Click "+ Upload Images" or drop images here
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(130px,1fr))', gap: 10 }}>
+                {col.images.map((img, idx) => (
+                  <div key={idx} style={{ position: 'relative', background: '#0e120e', border: '1px solid rgba(255,255,255,.07)',
+                    borderRadius: 12, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img src={img} style={{ height: 80, objectFit: 'contain', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,.6))' }}
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = '0.2'; }} />
+                    <button
+                      onClick={() => removeImage(col.id, idx)}
+                      style={{ position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 6,
+                        background: 'rgba(26,16,20,.9)', border: '1px solid rgba(235,75,75,.3)', color: '#eb4b4b',
+                        fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

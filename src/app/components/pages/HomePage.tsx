@@ -1,6 +1,8 @@
 'use client';
+import { useState, useEffect } from 'react';
 import { useStore } from '@/app/store/useStore';
 import { buildCasesAll, PAY_METHODS, BEST_TABS } from '@/app/lib/data';
+import { HOME_LAYOUT_KEY, DEFAULT_HOME_LAYOUT, HomeSection } from '@/app/components/pages/AdminPage';
 import { CoinIcon } from '../CoinIcon';
 import { Placeholder } from '../Placeholder';
 import { RarityBar } from '../RarityBar';
@@ -31,14 +33,29 @@ function CaseCard({ name, price, onOpen, height = 128 }: { name: string; price: 
   );
 }
 
+const SECTION_GLOWS = [
+  'rgba(230,195,62,.35)',
+  'rgba(95,213,95,.3)',
+  'rgba(230,75,75,.28)',
+  'rgba(95,95,230,.28)',
+];
+
 export function HomePage() {
   const { go, login, openCase, flash, bestTab, setBestTab } = useStore();
-  const homeRows = [
-    { title: 'Knives Collection', icon: '🔪', glow: 'rgba(230,195,62,.35)', items: casesAll.slice(0, 5) },
-    { title: 'Gloves Collection', icon: '🧤', glow: 'rgba(95,213,95,.3)', items: casesAll.slice(15, 20) },
-  ];
-  const rubyRow = casesAll.slice(1, 6);
-  const bestItems = casesAll.slice(2, 7);
+  const [layout, setLayout] = useState<HomeSection[]>(DEFAULT_HOME_LAYOUT);
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(HOME_LAYOUT_KEY) || 'null');
+      if (stored) setLayout(stored);
+    } catch {}
+  }, []);
+
+  const [s1, s2, s3, s4] = layout;
+  const section1Cases = (s1?.caseIds ?? []).map(id => casesAll[id]).filter(Boolean);
+  const section2Cases = (s2?.caseIds ?? []).map(id => casesAll[id]).filter(Boolean);
+  const section3Cases = (s3?.caseIds ?? []).map(id => casesAll[id]).filter(Boolean);
+  const bestItems     = (s4?.caseIds ?? []).map(id => casesAll[id]).filter(Boolean);
 
   return (
     <div>
@@ -93,73 +110,81 @@ export function HomePage() {
         </div>
       </div>
 
-      {/* Collection rows */}
-      {homeRows.map(row => (
-        <div key={row.title} style={{ border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: '18px 20px 22px',
+      {/* Section 1 */}
+      {section1Cases.length > 0 && (
+        <div style={{ border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: '18px 20px 22px',
           marginBottom: 22, background: '#0b0e0a', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-            width: 340, height: 80, background: `radial-gradient(ellipse at center,${row.glow},transparent 70%)`, opacity: .5 }} />
+            width: 340, height: 80, background: `radial-gradient(ellipse at center,${SECTION_GLOWS[0]},transparent 70%)`, opacity: .5 }} />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 18, position: 'relative' }}>
-            <span style={{ fontSize: 18 }}>{row.icon}</span>
-            <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 19, margin: 0 }}>{row.title}</h3>
+            <span style={{ fontSize: 18 }}>{s1?.icon}</span>
+            <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 19, margin: 0 }}>{s1?.title}</h3>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14 }}>
-            {row.items.map(c => <CaseCard key={c.id} name={c.name} price={c.price} onOpen={() => openCase(c)} />)}
+            {section1Cases.map(c => <CaseCard key={c.id} name={c.name} price={c.price} onOpen={() => openCase(c)} />)}
           </div>
         </div>
-      ))}
+      )}
 
-      {/* Ruby Knives */}
-      <div style={{ border: '1px solid rgba(230,75,75,.18)', borderRadius: 16, padding: '18px 20px 22px', marginBottom: 30,
-        background: '#0c0909', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-          width: 340, height: 80, background: 'radial-gradient(ellipse at center,rgba(230,75,75,.28),transparent 70%)', opacity: .6 }} />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 18, position: 'relative' }}>
-          <span style={{ fontSize: 18 }}>🍁</span>
-          <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 19, margin: 0 }}>Ruby Knifes Collection</h3>
+      {/* Section 2 */}
+      {section2Cases.length > 0 && (
+        <div style={{ border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: '18px 20px 22px',
+          marginBottom: 22, background: '#0b0e0a', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+            width: 340, height: 80, background: `radial-gradient(ellipse at center,${SECTION_GLOWS[1]},transparent 70%)`, opacity: .5 }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 18, position: 'relative' }}>
+            <span style={{ fontSize: 18 }}>{s2?.icon}</span>
+            <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 19, margin: 0 }}>{s2?.title}</h3>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14 }}>
+            {section2Cases.map(c => <CaseCard key={c.id} name={c.name} price={c.price} onOpen={() => openCase(c)} />)}
+          </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14 }}>
-          {rubyRow.map(c => (
-            <div key={c.id} onClick={() => openCase({ id: c.id, name: 'Ruby Skeleton', price: '1,343.09', image: '/cases/case-gold-tiger.png' })}
-              style={{ background: '#0e120e', border: '1px solid rgba(255,255,255,.06)', borderRadius: 14, padding: 14, cursor: 'pointer' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = ''; }}>
-              <Placeholder label="knife render" height={188} color="rgba(90,150,230,.10)" style={{ border: '1px solid rgba(255,255,255,.05)' }} />
-              <RarityBar left="18%" />
-              <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 14 }}>Ruby Skeleton</div>
-              <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 5, fontSize: 13, color: '#cfd4cf' }}>
-                <CoinIcon size={13} />1,343.09
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
 
-      {/* Best Sellers */}
-      <div style={{ borderRadius: 18, padding: '30px 24px 28px', marginBottom: 26,
-        background: 'radial-gradient(ellipse at center,#15130a,#0a0c08 75%)',
-        border: '1px solid rgba(230,195,62,.14)', position: 'relative', overflow: 'hidden' }}>
-        <h2 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 800, fontSize: 30, textAlign: 'center', margin: '0 0 4px',
-          letterSpacing: 2, background: 'linear-gradient(180deg,#ffe88a,#d99a1e)', WebkitBackgroundClip: 'text',
-          backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>BEST SELLERS</h2>
-        <p style={{ textAlign: 'center', color: '#9aa39a', fontSize: 13, margin: '0 0 18px' }}>
-          The most expensive and top collection for the best players
-        </p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 22, flexWrap: 'wrap' }}>
-          {BEST_TABS.map(label => {
-            const st = tabStyle(bestTab === label);
-            return (
-              <span key={label} onClick={() => setBestTab(label)} style={{ padding: '8px 16px', borderRadius: 9,
-                fontSize: 12.5, fontWeight: 500, cursor: 'pointer', ...st }}>
-                {label}
-              </span>
-            );
-          })}
+      {/* Section 3 */}
+      {section3Cases.length > 0 && (
+        <div style={{ border: '1px solid rgba(230,75,75,.18)', borderRadius: 16, padding: '18px 20px 22px', marginBottom: 30,
+          background: '#0c0909', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+            width: 340, height: 80, background: `radial-gradient(ellipse at center,${SECTION_GLOWS[2]},transparent 70%)`, opacity: .6 }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 18, position: 'relative' }}>
+            <span style={{ fontSize: 18 }}>{s3?.icon}</span>
+            <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 19, margin: 0 }}>{s3?.title}</h3>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14 }}>
+            {section3Cases.map(c => <CaseCard key={c.id} name={c.name} price={c.price} onOpen={() => openCase(c)} />)}
+          </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14 }}>
-          {bestItems.map(c => <CaseCard key={c.id} name={c.name} price={c.price} onOpen={() => openCase(c)} />)}
+      )}
+
+      {/* Section 4 — Best Sellers */}
+      {bestItems.length > 0 && (
+        <div style={{ borderRadius: 18, padding: '30px 24px 28px', marginBottom: 26,
+          background: 'radial-gradient(ellipse at center,#15130a,#0a0c08 75%)',
+          border: '1px solid rgba(230,195,62,.14)', position: 'relative', overflow: 'hidden' }}>
+          <h2 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 800, fontSize: 30, textAlign: 'center', margin: '0 0 4px',
+            letterSpacing: 2, background: 'linear-gradient(180deg,#ffe88a,#d99a1e)', WebkitBackgroundClip: 'text',
+            backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s4?.title?.toUpperCase() ?? 'BEST SELLERS'}</h2>
+          <p style={{ textAlign: 'center', color: '#9aa39a', fontSize: 13, margin: '0 0 18px' }}>
+            The most expensive and top collection for the best players
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 22, flexWrap: 'wrap' }}>
+            {BEST_TABS.map(label => {
+              const st = tabStyle(bestTab === label);
+              return (
+                <span key={label} onClick={() => setBestTab(label)} style={{ padding: '8px 16px', borderRadius: 9,
+                  fontSize: 12.5, fontWeight: 500, cursor: 'pointer', ...st }}>
+                  {label}
+                </span>
+              );
+            })}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14 }}>
+            {bestItems.map(c => <CaseCard key={c.id} name={c.name} price={c.price} onOpen={() => openCase(c)} />)}
+          </div>
         </div>
-      </div>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 34 }}>
         <button onClick={() => go('cases')} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14,

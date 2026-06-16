@@ -8,7 +8,7 @@ import { SkinImage } from '../SkinImage';
 
 export function CaseDetailPage() {
   const { currentCase, phase, won, reel, multiplier, setMultiplier, go, flash,
-    startSpin, finishSpin, closeOpen, openAgain,
+    startSpin, finishSpin, closeOpen, openAgain, keepItem, sellItem,
     serverSeed, clientSeed, nonce, recordSpin, setLastSpinHash, openFairness } = useStore();
   const reelRef = useRef<HTMLDivElement>(null);
   const vpRef = useRef<HTMLDivElement>(null);
@@ -242,9 +242,15 @@ export function CaseDetailPage() {
                 )}
               </div>
               <div style={{ display: 'flex', gap: 12, marginTop: 22 }}>
-                <button onClick={handleClose} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '12px 24px', borderRadius: 11, cursor: 'pointer' }}>Sell for {won.price}</button>
+                <button onClick={() => { closeOpen(); if (won) sellItem('__instant__'); flash(`Sold for ${won.price} coins`); }}
+                  style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '12px 24px', borderRadius: 11, cursor: 'pointer' }}>
+                  Sell for {won.price}
+                </button>
                 <button onClick={handleOpenAgain} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#cfd4cf', background: '#10140f', border: '1px solid rgba(255,255,255,.12)', padding: '12px 24px', borderRadius: 11, cursor: 'pointer' }}>Open Again</button>
-                <button onClick={handleClose} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#cfd4cf', background: '#10140f', border: '1px solid rgba(255,255,255,.12)', padding: '12px 24px', borderRadius: 11, cursor: 'pointer' }}>Keep</button>
+                <button onClick={() => { if (won) keepItem(won, cc.name); closeOpen(); }}
+                  style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#7fe877', background: 'rgba(95,213,95,.1)', border: '1px solid rgba(95,213,95,.3)', padding: '12px 24px', borderRadius: 11, cursor: 'pointer' }}>
+                  Keep
+                </button>
               </div>
             </div>
           </div>

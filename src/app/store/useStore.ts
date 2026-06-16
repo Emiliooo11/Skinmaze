@@ -12,9 +12,9 @@ export interface SpinRecord {
   price: string;
 }
 
-export type Route = 'home' | 'cases' | 'market' | 'casedetail' | 'profile' | 'wallet' | 'admin';
+export type Route = 'home' | 'cases' | 'market' | 'casedetail' | 'profile' | 'wallet';
 export type Phase = 'idle' | 'spin' | 'done';
-export type ProfileTab = 'settings' | 'security' | 'affiliate' | 'transactions';
+export type ProfileTab = 'settings' | 'security' | 'affiliate' | 'transactions' | 'inventory';
 export type WalletTab = 'deposit' | 'withdraw';
 export type WalletView = 'methods' | 'amount';
 
@@ -27,9 +27,16 @@ export interface MpState {
   color: number | null;
 }
 
+export interface InventoryItem extends ReelItem {
+  inventoryId: string;   // unique per item instance
+  caseName: string;
+  openedAt: string;      // ISO timestamp
+}
+
 interface Store {
   route: Route;
   logged: boolean;
+  inventory: InventoryItem[];
   phase: Phase;
   won: ReelItem | null;
   reel: ReelItem[];
@@ -94,6 +101,10 @@ interface Store {
   setDepositAmt: (n: number) => void;
 
   // Provably fair actions
+  keepItem: (item: ReelItem, caseName: string) => void;
+  sellItem: (inventoryId: string) => void;
+  withdrawItem: (inventoryId: string) => void;
+
   setClientSeed: (s: string) => void;
   rotateSeed: () => Promise<void>;
   openFairness: () => void;
@@ -114,6 +125,7 @@ const _fi = makeFairInit();
 export const useStore = create<Store>((set, get) => ({
   route: 'home',
   logged: false,
+  inventory: [],
   phase: 'idle',
   won: null,
   reel: [],
@@ -193,6 +205,25 @@ export const useStore = create<Store>((set, get) => ({
   setWalletTab: (t) => set({ walletTab: t }),
   setWalletView: (v) => set({ walletView: v }),
   setDepositAmt: (n) => set({ depositAmt: n }),
+
+  keepItem: (item, caseName) => {
+    const entry: InventoryItem = {
+      ...item,
+      inventoryId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      caseName,
+      openedAt: new Date().toISOString(),
+    };
+    set(s => ({ inventory: [entry, ...s.inventory] }));
+    get().flash('Item kept — check your Inventory!');
+  },
+  sellItem: (inventoryId) => {
+    const item = get().inventory.find(i => i.inventoryId === inventoryId);
+    set(s => ({ inventory: s.inventory.filter(i => i.inventoryId !== inventoryId) }));
+    get().flash(`Sold for ${item?.price ?? '—'} coins`);
+  },
+  withdrawItem: (inventoryId) => {
+    get().flash('CSFloat withdrawal coming soon ✨');
+  },
 
   setClientSeed: (s) => set({ clientSeed: s }),
   rotateSeed: async () => {

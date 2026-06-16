@@ -84,18 +84,18 @@ export async function GET(req: NextRequest) {
       ? ['name', 'asc']
       : ['price', 'desc'];
 
+  const hasPriceFilter = minPrice > 0 || maxPrice > 0;
+  // Fetch a larger batch when price filtering so we have enough after filtering
+  const fetchCount = hasPriceFilter ? Math.min(count * 4, 200) : count;
+
   const base = new URLSearchParams({
     appid: '730',
     norender: '1',
-    count: String(count),
-    start: String(start),
+    count: String(fetchCount),
+    start: String(hasPriceFilter ? 0 : start),
     sort_column: sortCol,
     sort_dir: sortDir,
   });
-
-  // Steam price params are in cents (USD × 100)
-  if (minPrice > 0) base.set('search_price_min', String(Math.round(minPrice * 100)));
-  if (maxPrice > 0) base.set('search_price_max', String(Math.round(maxPrice * 100)));
 
   if (q) base.set('query', q);
 
@@ -124,11 +124,19 @@ export async function GET(req: NextRequest) {
     const json = await res.json();
 
     // Filter out items without a pipe (stickers, cases, keys, patches, etc.)
-    const results = (json.results || [])
+    let results = (json.results || [])
       .filter((item: SteamItem) => item.hash_name.includes(' | '))
       .map(parseSkin);
 
-    return NextResponse.json({ results, total: json.total_count ?? results.length });
+    // Apply price filter server-side (Steam's render endpoint ignores price params)
+    if (minPrice > 0) results = results.filter((s: ReturnType<typeof parseSkin>) => s.price >= minPrice);
+    if (maxPrice > 0) results = results.filter((s: ReturnType<typeof parseSkin>) => s.price <= maxPrice);
+
+    // When price filtering, paginate the filtered results manually
+    const total = hasPriceFilter ? results.length : (json.total_count ?? results.length);
+    if (hasPriceFilter) results = results.slice(start, start + count);
+
+    return NextResponse.json({ results, total });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 502 });
   }
