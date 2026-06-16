@@ -59,8 +59,12 @@ create table if not exists wagers (
   case_name text,
   amount numeric(10,2),
   won_item text,
+  won_item_image text,
+  won_item_color text,
   won_value numeric(10,2),
   profit numeric(10,2),
+  player_name text,
+  player_avatar text,
   created_at timestamptz default now()
 );
 

@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef } from 'react';
-import { useStore } from '@/app/store/useStore';
+import { useStore, UserInfo } from '@/app/store/useStore';
 import { randItem } from '@/app/lib/data';
 import { rollToItem } from '@/app/lib/provablyFair';
 import { CoinIcon } from '../CoinIcon';
@@ -9,7 +9,7 @@ import { SkinImage } from '../SkinImage';
 export function CaseDetailPage() {
   const { currentCase, phase, won, reel, multiplier, setMultiplier, go, flash,
     startSpin, finishSpin, closeOpen, openAgain, keepItem, sellItem,
-    serverSeed, clientSeed, nonce, recordSpin, setLastSpinHash, openFairness } = useStore();
+    serverSeed, clientSeed, nonce, recordSpin, setLastSpinHash, openFairness, user } = useStore();
   const reelRef = useRef<HTMLDivElement>(null);
   const vpRef = useRef<HTMLDivElement>(null);
   const spinTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -34,6 +34,26 @@ export function CaseDetailPage() {
       setLastSpinHash(wonItem.hash);
       recordSpin({ serverSeed, clientSeed, nonce: spinNonce, hash: wonItem.hash, item: `${wonItem.w} | ${wonItem.skin}`, price: wonItem.price });
       useStore.setState(s => ({ nonce: s.nonce + 1 }));
+
+      // Record in wagers table for live ticker
+      const itemPrice = parseFloat(wonItem.price.replace(/,/g, '')) || 0;
+      const casePrice = parseFloat((currentCase?.price ?? '0').replace(/,/g, '')) || 0;
+      fetch('/api/recent-opens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          case_name: currentCase?.name ?? 'Case',
+          amount: casePrice,
+          won_item: `${wonItem.w} | ${wonItem.skin}`,
+          won_item_image: wonItem.imageUrl || null,
+          won_item_color: wonItem.color || null,
+          won_value: itemPrice,
+          profit: itemPrice - casePrice,
+          player_name: user?.username ?? 'Anonymous',
+          player_avatar: user?.avatar ?? null,
+        }),
+      }).catch(() => {});
+
 
       if (startTimer.current) clearTimeout(startTimer.current);
       startTimer.current = setTimeout(() => {

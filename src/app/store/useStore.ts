@@ -95,7 +95,6 @@ interface Store {
   loadCase: (c: CaseItem) => void;
   flash: (msg: string) => void;
   login: () => void;
-  logout: () => void;
   openCase: (c: CaseItem) => void;
   startSpin: (reel: ReelItem[], won: ReelItem) => void;
   finishSpin: () => void;
