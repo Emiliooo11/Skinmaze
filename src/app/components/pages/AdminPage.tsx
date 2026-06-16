@@ -182,12 +182,25 @@ export function AdminPage() {
 
 // ── Case Builder ─────────────────────────────────────────────────────────────
 
+const CAT_TABS = ['All','Rifle','Pistol','Sniper','SMG','Shotgun','Machinegun','Knifes','Gloves'] as const;
+const RAR_CHIPS = [
+  { key: '',       label: 'All',        color: '#9aa39a' },
+  { key: 'gold',   label: '⭐ Gold',    color: '#e6c33e' },
+  { key: 'red',    label: 'Covert',     color: '#eb4b4b' },
+  { key: 'pink',   label: 'Classified', color: '#d32ce6' },
+  { key: 'purple', label: 'Restricted', color: '#8847ff' },
+  { key: 'blue',   label: 'Mil-Spec',   color: '#4b69ff' },
+];
+
 function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: (c: AdminCase) => void; onBack: () => void }) {
   const [draft, setDraft] = useState<AdminCase>(initial);
   const [query, setQuery] = useState('');
+  const [catFilter, setCatFilter] = useState('');
+  const [rarFilter, setRarFilter] = useState('');
   const [results, setResults] = useState<SteamSkin[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchErr, setSearchErr] = useState('');
+  const [totalAvail, setTotalAvail] = useState(0);
 
   // Recompute price whenever skins or houseEdge change
   const ev = useMemo(() => calcEV(draft.skins), [draft.skins]);
@@ -228,22 +241,37 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
     setDraft(d => ({ ...d, skins }));
   }
 
-  async function search() {
-    if (!query.trim()) return;
+  // Auto-fetch when category or rarity filter changes (browse mode)
+  useEffect(() => {
+    if (query.trim()) return; // don't override a text search
+    doFetch();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catFilter, rarFilter]);
+
+  async function doFetch(q?: string) {
     setSearching(true);
     setSearchErr('');
     try {
-      const qs = new URLSearchParams({ q: query, count: '24' });
+      const qs = new URLSearchParams({ count: '60' });
+      if (q ?? query) qs.set('q', q ?? query);
+      if (catFilter) qs.set('category', catFilter);
+      if (rarFilter) qs.set('rarity', rarFilter);
       const res = await fetch(`/api/skin-search?${qs}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
-      setResults(json.results);
+      setResults(json.results || []);
+      setTotalAvail(json.total || 0);
     } catch (e) {
       setSearchErr(String(e));
       setResults([]);
     } finally {
       setSearching(false);
     }
+  }
+
+  async function search() {
+    if (!query.trim() && !catFilter && !rarFilter) return;
+    doFetch();
   }
 
   function addSkin(s: SteamSkin) {
@@ -450,29 +478,79 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
           </div>
         </div>
 
-        {/* Right: CSFloat skin search */}
+        {/* Right: skin browser */}
         <div>
-          <div style={{ background: '#0b0e0a', border: '1px solid rgba(255,255,255,.07)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
-            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 14 }}>Search CSFloat Skins</div>
-            <div style={{ display: 'flex', gap: 10 }}>
+          {/* Search + filters */}
+          <div style={{ background: '#0b0e0a', border: '1px solid rgba(255,255,255,.07)', borderRadius: 16, padding: 18, marginBottom: 14 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12, color: '#cfd4cf' }}>Browse Steam Market Skins</div>
+
+            {/* Search bar */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
               <input
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && search()}
-                placeholder="e.g. AK-47 | Redline or Karambit"
+                placeholder="Search by name, e.g. AK-47 Redline…"
                 style={{ flex: 1, background: '#0e120e', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10,
-                  padding: '12px 16px', color: '#e8ece8', fontFamily: 'var(--font-outfit)', fontSize: 14, outline: 'none' }}
+                  padding: '11px 16px', color: '#e8ece8', fontFamily: 'var(--font-outfit)', fontSize: 14, outline: 'none' }}
               />
               <button onClick={search} disabled={searching}
                 style={{ fontWeight: 700, fontSize: 14, color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)',
-                  border: 'none', padding: '0 24px', borderRadius: 10, cursor: 'pointer', opacity: searching ? .6 : 1 }}>
+                  border: 'none', padding: '0 22px', borderRadius: 10, cursor: 'pointer', opacity: searching ? .6 : 1 }}>
                 {searching ? '…' : 'Search'}
               </button>
             </div>
-            {searchErr && <div style={{ fontSize: 12, color: '#eb4b4b', marginTop: 8 }}>{searchErr}</div>}
+
+            {/* Category tabs */}
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, marginBottom: 12 }}>
+              {CAT_TABS.map(cat => {
+                const active = catFilter === (cat === 'All' ? '' : cat);
+                return (
+                  <span key={cat} onClick={() => { setCatFilter(cat === 'All' ? '' : cat); setQuery(''); }}
+                    style={{ whiteSpace: 'nowrap', padding: '6px 13px', borderRadius: 9, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                      background: active ? 'rgba(95,213,95,.14)' : '#0e120e',
+                      border: active ? '1px solid rgba(95,213,95,.4)' : '1px solid rgba(255,255,255,.08)',
+                      color: active ? '#7fe877' : '#9aa39a' }}>
+                    {cat}
+                  </span>
+                );
+              })}
+            </div>
+
+            {/* Rarity chips */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {RAR_CHIPS.map(r => {
+                const active = rarFilter === r.key;
+                return (
+                  <span key={r.key} onClick={() => setRarFilter(r.key)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 8, fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                      background: active ? `${r.color}22` : '#0e120e',
+                      border: active ? `1px solid ${r.color}88` : '1px solid rgba(255,255,255,.08)',
+                      color: active ? r.color : '#9aa39a' }}>
+                    {r.key && <div style={{ width: 8, height: 8, borderRadius: 2, background: r.color, flexShrink: 0 }} />}
+                    {r.label}
+                  </span>
+                );
+              })}
+            </div>
+
+            {searchErr && <div style={{ fontSize: 12, color: '#eb4b4b', marginTop: 10 }}>{searchErr}</div>}
+            {!searching && totalAvail > 0 && (
+              <div style={{ fontSize: 11, color: '#4a7a4a', marginTop: 10 }}>
+                Showing {results.length} of {totalAvail.toLocaleString()} available
+              </div>
+            )}
           </div>
 
-          {results.length > 0 && (
+          {searching && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(155px,1fr))', gap: 10 }}>
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} style={{ height: 200, borderRadius: 12, background: '#0b0e0a', border: '1px solid rgba(255,255,255,.05)', animation: 'pulse 1.4s ease-in-out infinite' }} />
+              ))}
+            </div>
+          )}
+
+          {!searching && results.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 12 }}>
               {results.map(s => {
                 const already = draft.skins.some(x => x.id === s.id);
@@ -512,14 +590,9 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
             </div>
           )}
 
-          {!searching && results.length === 0 && query && !searchErr && (
-            <div style={{ textAlign: 'center', color: '#6b746b', padding: 40, fontSize: 13 }}>No results for "{query}"</div>
-          )}
-
-          {results.length === 0 && !query && (
-            <div style={{ textAlign: 'center', color: '#4a7a4a', padding: 60, fontSize: 13 }}>
-              Search for any CS2 skin by name.<br />
-              <span style={{ fontSize: 12, color: '#3a5a3a' }}>Try: "AK-47 Redline", "Karambit", "AWP Dragon Lore"</span>
+          {!searching && results.length === 0 && !searchErr && (
+            <div style={{ textAlign: 'center', color: '#4a7a4a', padding: 40, fontSize: 13 }}>
+              {query ? `No results for "${query}"` : 'Select a category or search by name above'}
             </div>
           )}
         </div>
