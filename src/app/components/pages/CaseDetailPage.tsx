@@ -9,7 +9,7 @@ import { SkinImage } from '../SkinImage';
 export function CaseDetailPage() {
   const { currentCase, phase, won, reel, multiplier, setMultiplier, go, flash,
     startSpin, finishSpin, closeOpen, openAgain, keepItem, sellItem,
-    serverSeed, clientSeed, nonce, recordSpin, setLastSpinHash, openFairness, user } = useStore();
+    serverSeed, clientSeed, nonce, recordSpin, setLastSpinHash, openFairness, user, logged, openLogin } = useStore();
   const reelRef = useRef<HTMLDivElement>(null);
   const vpRef = useRef<HTMLDivElement>(null);
   const spinTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -21,8 +21,9 @@ export function CaseDetailPage() {
     return Array.from({ length: count }, () => randItem());
   }
 
-  function doSpin(fast: boolean) {
+  function doSpin(fast: boolean, demo = false) {
     if (phase === 'spin') return;
+    if (!demo && !logged) { openLogin(); return; }
     const newReel = buildReel(60);
     const winIdx = 54;
     const dur = fast ? 1.7 : 5.6;
@@ -35,7 +36,8 @@ export function CaseDetailPage() {
       recordSpin({ serverSeed, clientSeed, nonce: spinNonce, hash: wonItem.hash, item: `${wonItem.w} | ${wonItem.skin}`, price: wonItem.price });
       useStore.setState(s => ({ nonce: s.nonce + 1 }));
 
-      // Record in wagers table for live ticker
+      // Record in wagers table for live ticker (real spins only)
+      if (demo) return;
       const itemPrice = parseFloat(wonItem.price.replace(/,/g, '')) || 0;
       const casePrice = parseFloat((currentCase?.price ?? '0').replace(/,/g, '')) || 0;
       fetch('/api/recent-opens', {
@@ -154,18 +156,29 @@ export function CaseDetailPage() {
           ))}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={() => doSpin(false)} disabled={phase === 'spin'} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 15,
-            color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none',
-            padding: '14px 40px', borderRadius: 11, cursor: phase === 'spin' ? 'default' : 'pointer',
-            boxShadow: '0 8px 20px rgba(95,213,95,.3)', opacity: phase === 'spin' ? .6 : 1 }}>Open Case</button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#10140f', border: '1px solid rgba(255,255,255,.1)', padding: '13px 20px', borderRadius: 11, fontWeight: 600 }}>
-            <CoinIcon size={16} />{cc.price}
-          </div>
+          {logged ? (
+            <>
+              <button onClick={() => doSpin(false)} disabled={phase === 'spin'} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 15,
+                color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none',
+                padding: '14px 40px', borderRadius: 11, cursor: phase === 'spin' ? 'default' : 'pointer',
+                boxShadow: '0 8px 20px rgba(95,213,95,.3)', opacity: phase === 'spin' ? .6 : 1 }}>Open Case</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#10140f', border: '1px solid rgba(255,255,255,.1)', padding: '13px 20px', borderRadius: 11, fontWeight: 600 }}>
+                <CoinIcon size={16} />{cc.price}
+              </div>
+            </>
+          ) : (
+            <button onClick={openLogin} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 15,
+              color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none',
+              padding: '14px 40px', borderRadius: 11, cursor: 'pointer',
+              boxShadow: '0 8px 20px rgba(95,213,95,.3)' }}>Login to Open</button>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={() => doSpin(true)} title="Fast spin" style={{ width: 48, height: 46, borderRadius: 11,
-            background: '#0e120e', border: '1px solid rgba(255,255,255,.1)', color: '#cfd4cf', cursor: 'pointer', fontSize: 15 }}>⏩</button>
-          <button onClick={() => doSpin(false)} style={{ display: 'flex', alignItems: 'center', gap: 8,
+          {logged && (
+            <button onClick={() => doSpin(true)} title="Fast spin" style={{ width: 48, height: 46, borderRadius: 11,
+              background: '#0e120e', border: '1px solid rgba(255,255,255,.1)', color: '#cfd4cf', cursor: 'pointer', fontSize: 15 }}>⏩</button>
+          )}
+          <button onClick={() => doSpin(false, true)} style={{ display: 'flex', alignItems: 'center', gap: 8,
             fontFamily: 'var(--font-outfit)', fontWeight: 500, fontSize: 14, color: '#cfd4cf',
             background: '#0e120e', border: '1px solid rgba(255,255,255,.1)', padding: '12px 18px', borderRadius: 11, cursor: 'pointer' }}>↻ Demo spin</button>
         </div>
