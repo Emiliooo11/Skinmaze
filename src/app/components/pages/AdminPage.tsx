@@ -192,11 +192,16 @@ const RAR_CHIPS = [
   { key: 'blue',   label: 'Mil-Spec',   color: '#4b69ff' },
 ];
 
+const PAGE_SIZE = 48;
+
 function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: (c: AdminCase) => void; onBack: () => void }) {
   const [draft, setDraft] = useState<AdminCase>(initial);
   const [query, setQuery] = useState('');
   const [catFilter, setCatFilter] = useState('');
   const [rarFilter, setRarFilter] = useState('');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [page, setPage] = useState(0);
   const [results, setResults] = useState<SteamSkin[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchErr, setSearchErr] = useState('');
@@ -241,21 +246,34 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
     setDraft(d => ({ ...d, skins }));
   }
 
-  // Auto-fetch when category or rarity filter changes (browse mode)
+  // Reset to page 0 when filters change, then fetch
   useEffect(() => {
-    if (query.trim()) return; // don't override a text search
-    doFetch();
+    if (query.trim()) return;
+    setPage(0);
+    doFetch({ pg: 0 });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catFilter, rarFilter]);
 
-  async function doFetch(q?: string) {
+  // Fetch when page changes (but not on initial mount — handled above)
+  const isFirstMount = useState(true);
+  useEffect(() => {
+    if (isFirstMount[0]) { isFirstMount[1](false); return; }
+    doFetch({ pg: page });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  async function doFetch(opts?: { pg?: number; q?: string }) {
     setSearching(true);
     setSearchErr('');
+    const pg = opts?.pg ?? page;
+    const q  = opts?.q  ?? query;
     try {
-      const qs = new URLSearchParams({ count: '60' });
-      if (q ?? query) qs.set('q', q ?? query);
-      if (catFilter) qs.set('category', catFilter);
-      if (rarFilter) qs.set('rarity', rarFilter);
+      const qs = new URLSearchParams({ count: String(PAGE_SIZE), start: String(pg * PAGE_SIZE) });
+      if (q)           qs.set('q', q);
+      if (catFilter)   qs.set('category', catFilter);
+      if (rarFilter)   qs.set('rarity', rarFilter);
+      if (minPrice)    qs.set('minPrice', minPrice);
+      if (maxPrice)    qs.set('maxPrice', maxPrice);
       const res = await fetch(`/api/skin-search?${qs}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
@@ -269,10 +287,18 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
     }
   }
 
+  function applyFilters() {
+    setPage(0);
+    doFetch({ pg: 0 });
+  }
+
   async function search() {
     if (!query.trim() && !catFilter && !rarFilter) return;
-    doFetch();
+    setPage(0);
+    doFetch({ pg: 0 });
   }
+
+  const totalPages = Math.ceil(totalAvail / PAGE_SIZE);
 
   function addSkin(s: SteamSkin) {
     if (draft.skins.some(x => x.id === s.id)) return;
@@ -431,7 +457,7 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
             </div>
 
             {/* Rarity chips */}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
               {RAR_CHIPS.map(r => {
                 const active = rarFilter === r.key;
                 return (
@@ -447,10 +473,42 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
               })}
             </div>
 
+            {/* Price range */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12, color: '#9aa39a', whiteSpace: 'nowrap' }}>Price $</span>
+              <input
+                type="number" min={0} step={1} placeholder="Min"
+                value={minPrice}
+                onChange={e => setMinPrice(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && applyFilters()}
+                style={{ width: 80, background: '#0e120e', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8,
+                  padding: '7px 10px', color: '#e8ece8', fontFamily: 'var(--font-mono)', fontSize: 12, outline: 'none' }}
+              />
+              <span style={{ color: '#4a7a4a', fontSize: 12 }}>—</span>
+              <input
+                type="number" min={0} step={1} placeholder="Max"
+                value={maxPrice}
+                onChange={e => setMaxPrice(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && applyFilters()}
+                style={{ width: 80, background: '#0e120e', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8,
+                  padding: '7px 10px', color: '#e8ece8', fontFamily: 'var(--font-mono)', fontSize: 12, outline: 'none' }}
+              />
+              <button onClick={applyFilters}
+                style={{ padding: '7px 14px', borderRadius: 8, background: '#1c241b', border: '1px solid rgba(95,213,95,.2)', color: '#7fe877', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                Apply
+              </button>
+              {(minPrice || maxPrice) && (
+                <button onClick={() => { setMinPrice(''); setMaxPrice(''); setPage(0); doFetch({ pg: 0 }); }}
+                  style={{ padding: '7px 10px', borderRadius: 8, background: '#1a1014', border: '1px solid rgba(235,75,75,.2)', color: '#eb4b4b', fontSize: 12, cursor: 'pointer' }}>
+                  ✕
+                </button>
+              )}
+            </div>
+
             {searchErr && <div style={{ fontSize: 12, color: '#eb4b4b', marginTop: 10 }}>{searchErr}</div>}
             {!searching && totalAvail > 0 && (
               <div style={{ fontSize: 11, color: '#4a7a4a', marginTop: 10 }}>
-                Showing {results.length} of {totalAvail.toLocaleString()} available
+                {totalAvail.toLocaleString()} results · page {page + 1} of {totalPages} · showing {results.length}
               </div>
             )}
           </div>
@@ -506,6 +564,28 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
           {!searching && results.length === 0 && !searchErr && (
             <div style={{ textAlign: 'center', color: '#4a7a4a', padding: 40, fontSize: 13 }}>
               {query ? `No results for "${query}"` : 'Select a category or search by name above'}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && !searching && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 20, flexWrap: 'wrap' }}>
+              <button onClick={() => setPage(0)} disabled={page === 0}
+                style={pageBtnStyle(false, page === 0)}>«</button>
+              <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+                style={pageBtnStyle(false, page === 0)}>‹</button>
+
+              {pageNumbers(page, totalPages).map((p, i) =>
+                p === '…'
+                  ? <span key={`ellipsis-${i}`} style={{ color: '#4a7a4a', fontSize: 13, padding: '0 4px' }}>…</span>
+                  : <button key={p} onClick={() => setPage(p as number)}
+                      style={pageBtnStyle(p === page, false)}>{(p as number) + 1}</button>
+              )}
+
+              <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
+                style={pageBtnStyle(false, page >= totalPages - 1)}>›</button>
+              <button onClick={() => setPage(totalPages - 1)} disabled={page >= totalPages - 1}
+                style={pageBtnStyle(false, page >= totalPages - 1)}>»</button>
             </div>
           )}
 
@@ -594,6 +674,26 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
       </div>
     </div>
   );
+}
+
+function pageBtnStyle(active: boolean, disabled: boolean): React.CSSProperties {
+  return {
+    minWidth: 36, height: 36, borderRadius: 9, border: active ? '1px solid rgba(95,213,95,.5)' : '1px solid rgba(255,255,255,.08)',
+    background: active ? 'rgba(95,213,95,.14)' : '#0e120e', color: active ? '#7fe877' : disabled ? '#2a3a2a' : '#9aa39a',
+    fontSize: 13, fontWeight: active ? 700 : 400, cursor: disabled ? 'default' : 'pointer', padding: '0 8px',
+  };
+}
+
+function pageNumbers(current: number, total: number): (number | '…')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i);
+  const pages: (number | '…')[] = [];
+  const addPage = (n: number) => { if (!pages.includes(n)) pages.push(n); };
+  addPage(0);
+  if (current > 3) pages.push('…');
+  for (let i = Math.max(1, current - 2); i <= Math.min(total - 2, current + 2); i++) addPage(i);
+  if (current < total - 4) pages.push('…');
+  addPage(total - 1);
+  return pages;
 }
 
 function MathRow({ label, value, highlight, valueColor }: { label: string; value: string; highlight?: boolean; valueColor?: string }) {

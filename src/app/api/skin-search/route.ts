@@ -65,13 +65,18 @@ function parseSkin(item: SteamItem) {
   };
 }
 
+const PAGE_SIZE = 48;
+
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const q        = searchParams.get('q') || '';
   const category = searchParams.get('category') || '';
   const rarity   = searchParams.get('rarity') || '';
-  const count    = Math.min(parseInt(searchParams.get('count') || '50'), 100);
+  const count    = Math.min(parseInt(searchParams.get('count') || String(PAGE_SIZE)), 100);
+  const start    = Math.max(0, parseInt(searchParams.get('start') || '0'));
   const sort     = searchParams.get('sort') || 'price_desc';
+  const minPrice = parseFloat(searchParams.get('minPrice') || '0');   // USD
+  const maxPrice = parseFloat(searchParams.get('maxPrice') || '0');   // USD, 0 = no limit
 
   const [sortCol, sortDir] = sort === 'price_asc'
     ? ['price', 'asc']
@@ -83,9 +88,14 @@ export async function GET(req: NextRequest) {
     appid: '730',
     norender: '1',
     count: String(count),
+    start: String(start),
     sort_column: sortCol,
     sort_dir: sortDir,
   });
+
+  // Steam price params are in cents (USD × 100)
+  if (minPrice > 0) base.set('search_price_min', String(Math.round(minPrice * 100)));
+  if (maxPrice > 0) base.set('search_price_max', String(Math.round(maxPrice * 100)));
 
   if (q) base.set('query', q);
 
