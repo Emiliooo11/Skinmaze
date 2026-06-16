@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { CASE_IMAGES, RAR, Rarity } from '@/app/lib/data';
+import { usdToCoins, fmtCoins } from '@/app/lib/currency';
 import { fetchCases, upsertCase, deleteCase as dbDeleteCase, fetchHomeLayout, saveHomeLayout as dbSaveHomeLayout, fetchImageCollections, saveImageCollections, deleteImageCollection, DbCase, fetchDashboardStats, DashboardStats, fetchPlayers, DbPlayer, upsertPlayer, deletePlayer, fetchAffiliates, DbAffiliate, upsertAffiliate, deleteAffiliate, fetchReferralCodes, DbReferralCode, createReferralCode, deleteReferralCode, fetchAllReferralUses } from '@/app/lib/db';
 
 // ── Home layout config ────────────────────────────────────────────────────────
@@ -466,9 +467,9 @@ function DashboardSection({ stats, cases, players }: { stats: DashboardStats | n
                 return (
                   <tr key={c.id} style={{ borderBottom: '1px solid rgba(255,255,255,.04)' }}>
                     <td style={{ padding: '9px 12px', color: '#e8ece8', fontWeight: 600 }}>{c.name}</td>
-                    <td style={{ padding: '9px 12px', color: '#9aa39a' }}>${c.price}</td>
+                    <td style={{ padding: '9px 12px', color: '#9aa39a' }}>{fmtCoins(usdToCoins(parseFloat(c.price)))} coins</td>
                     <td style={{ padding: '9px 12px', color: '#9aa39a' }}>{c.skins.length}</td>
-                    <td style={{ padding: '9px 12px', color: '#9aa39a' }}>${ev.toFixed(2)}</td>
+                    <td style={{ padding: '9px 12px', color: '#9aa39a' }}>{fmtCoins(usdToCoins(ev))} coins</td>
                     <td style={{ padding: '9px 12px', color: price > 0 && parseFloat(c.price) >= ev ? '#3ad48f' : '#eb4b4b' }}>{rtp}%</td>
                     <td style={{ padding: '9px 12px', color: '#9aa39a' }}>{c.houseEdge}%</td>
                   </tr>
@@ -522,10 +523,10 @@ function CasesSection({ cases, onNew, onEdit, onDelete, onLibrary }: {
                 </div>
                 <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{c.name}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#9aa39a', marginBottom: 4 }}>
-                  <CoinIcon size={13} />{c.price} · {c.skins.length} skins
+                  <CoinIcon size={13} />{fmtCoins(usdToCoins(price))} · {c.skins.length} skins
                 </div>
                 <div style={{ fontSize: 11, color: '#6b746b', marginBottom: 10 }}>
-                  EV ${ev.toFixed(2)} · Edge {c.houseEdge}%
+                  EV {fmtCoins(usdToCoins(ev))} coins · Edge {c.houseEdge}%
                   {price > 0 && <span style={{ color: price >= ev ? '#3ad48f' : '#eb4b4b' }}> · RTP {((ev / price) * 100).toFixed(1)}%</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -1180,11 +1181,11 @@ function CaseBuilder({ initial, collections, onSave, onBack }: { initial: AdminC
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CoinIcon size={20} />
                 <span style={{ fontFamily: 'var(--font-poppins)', fontWeight: 800, fontSize: 26, color: '#7fe877' }}>
-                  {suggestedPrice > 0 ? suggestedPrice.toFixed(2) : '—'}
+                  {suggestedPrice > 0 ? fmtCoins(usdToCoins(suggestedPrice)) : '—'}
                 </span>
               </div>
               <div style={{ fontSize: 10, color: '#4a7a4a', marginTop: 4 }}>
-                EV ${ev.toFixed(2)} ÷ (1 − {draft.houseEdge}%) = ${suggestedPrice.toFixed(2)}
+                EV ${ev.toFixed(2)} ÷ (1 − {draft.houseEdge}%) = ${suggestedPrice.toFixed(2)} USD = {suggestedPrice > 0 ? fmtCoins(usdToCoins(suggestedPrice)) : '—'} coins
               </div>
             </div>
           </div>
