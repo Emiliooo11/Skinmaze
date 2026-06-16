@@ -22,15 +22,15 @@ export function TopBar() {
         <nav style={{ display: 'flex', alignItems: 'center', gap: 30 }}>
           <div onClick={() => go('cases')} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
             fontWeight: 500, fontSize: 15, color: route === 'cases' ? '#7fe877' : '#cfd4cf', transition: 'color .15s' }}>
-            <span>🗃️</span> Cases
+            <img src="/nav-cases.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain', opacity: route === 'cases' ? 1 : 0.6 }} /> Cases
           </div>
           <div onClick={() => flash('Coming soon ✨')} style={{ display: 'flex', alignItems: 'center', gap: 8,
             cursor: 'pointer', fontWeight: 500, fontSize: 15, color: '#9aa39a' }}>
-            <span>🏆</span> Leaderboard
+            <img src="/nav-leaderboard.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain', opacity: 0.6 }} /> Leaderboard
           </div>
           <div onClick={() => go('market')} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
             fontWeight: 500, fontSize: 15, color: route === 'market' ? '#7fe877' : '#9aa39a' }}>
-            <span>🛍️</span> Market
+            <img src="/nav-market.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain', opacity: route === 'market' ? 1 : 0.6 }} /> Market
           </div>
         </nav>
       </div>
@@ -38,9 +38,6 @@ export function TopBar() {
       {/* Guest buttons */}
       {!logged && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <button onClick={login} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#cfd4cf',
-            background: 'transparent', border: '1px solid rgba(255,255,255,.12)', padding: '11px 22px',
-            borderRadius: 11, cursor: 'pointer' }}>Alt Login</button>
           <button onClick={login} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a',
             background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '12px 24px',
             borderRadius: 11, cursor: 'pointer', boxShadow: '0 6px 18px rgba(95,213,95,.3)' }}>Login/Register</button>
