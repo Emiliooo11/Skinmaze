@@ -46,6 +46,7 @@ export function CaseDetailPage() {
   const [multiDecisions, setMultiDecisions] = useState<('keep' | 'sell')[]>([]);
   const vReelRefs = useRef<(HTMLDivElement | null)[]>([]);
   const multiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isDemoSpin = useRef(false);
 
   const cc = currentCase || { name: 'Case', price: fmtCoins(usdToCoins(1343.09)) };
   const casePrice = parseCoin(cc.price);
@@ -58,6 +59,7 @@ export function CaseDetailPage() {
   async function doSingleSpin(fast: boolean, demo = false) {
     if (phase === 'spin') return;
     if (!demo && !logged) { openLogin(); return; }
+    isDemoSpin.current = demo;
 
     if (!demo) {
       const result = await adjustBalance(-casePrice);
@@ -115,7 +117,9 @@ export function CaseDetailPage() {
         }
         playSpinSound(dur);
         if (spinTimer.current) clearTimeout(spinTimer.current);
-        spinTimer.current = setTimeout(() => { finishSpin(); playRevealSound(); }, dur * 1000 + 150);
+        spinTimer.current = setTimeout(() => {
+          if (isDemoSpin.current) { closeOpen(); } else { finishSpin(); playRevealSound(); }
+        }, dur * 1000 + 150);
       }, 70);
     });
   }
@@ -124,6 +128,7 @@ export function CaseDetailPage() {
   async function doMultiSpin(demo = false) {
     if (multiSpinning) return;
     if (!demo && !logged) { openLogin(); return; }
+    isDemoSpin.current = demo;
 
     if (!demo) {
       const result = await adjustBalance(-totalPrice);
@@ -187,6 +192,7 @@ export function CaseDetailPage() {
     if (multiTimer.current) clearTimeout(multiTimer.current);
     multiTimer.current = setTimeout(() => {
       setMultiSpinning(false);
+      if (isDemoSpin.current) { handleMultiClose(); return; }
       setMultiDone(true);
       playRevealSound();
 
