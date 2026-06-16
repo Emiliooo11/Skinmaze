@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useStore } from '@/app/store/useStore';
 
 export function LoginModal() {
-  const { loginOpen, closeLogin, login } = useStore();
+  const { loginOpen, closeLogin } = useStore();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -28,9 +28,9 @@ export function LoginModal() {
     if (!agreeTerms) errs.terms = 'Required';
     if (!agreeAge) errs.age = 'Required';
     if (Object.keys(errs).length) { setErrors(errs); return; }
-    // TODO: integrate real Steam OpenID — for now simulate login
-    login();
-    closeLogin();
+    // Redirect to Steam OpenID — callback will set session and redirect to /cases
+    const params = new URLSearchParams({ name: fullName.trim(), email: email.trim() });
+    window.location.href = `/api/auth/steam?${params}`;
   }
 
   return (

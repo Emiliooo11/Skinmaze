@@ -5,7 +5,7 @@ import { CoinIcon } from './CoinIcon';
 
 export function TopBar() {
   const pathname = usePathname();
-  const { go, openLogin, goProfile, goWallet, logged, flash } = useStore();
+  const { go, openLogin, goProfile, goWallet, logged, flash, user, logout } = useStore();
 
   const onCases  = pathname === '/cases' || pathname.startsWith('/cases/');
   const onMarket = pathname === '/market';
@@ -56,14 +56,10 @@ export function TopBar() {
             background: '#10140f', border: '1px solid rgba(255,255,255,.08)', padding: '9px 16px',
             borderRadius: 11, cursor: 'pointer' }}>
             <CoinIcon size={18} />
-            <span style={{ fontWeight: 600, fontSize: 15 }}>1,343.09</span>
+            <span style={{ fontWeight: 600, fontSize: 15 }}>{user?.balance.toFixed(2) ?? '0.00'}</span>
             <span style={{ color: '#06270a', background: '#46c041', borderRadius: 6, width: 18, height: 18,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700 }}>+</span>
           </div>
-          <button onClick={() => go('market')} style={{ width: 40, height: 40, borderRadius: 10,
-            background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
-            boxShadow: '0 5px 14px rgba(95,213,95,.3)' }}>🛍️</button>
           <button onClick={() => flash('Coming soon ✨')} style={{ width: 40, height: 40, borderRadius: 10,
             background: '#10140f', border: '1px solid rgba(255,255,255,.08)', cursor: 'pointer',
             position: 'relative', color: '#cfd4cf', fontSize: 16 }}>
@@ -74,13 +70,19 @@ export function TopBar() {
           <div onClick={() => goProfile()} style={{ display: 'flex', alignItems: 'center', gap: 9,
             background: '#10140f', border: '1px solid rgba(255,255,255,.08)', padding: '6px 12px 6px 6px',
             borderRadius: 11, cursor: 'pointer' }}>
-            <span style={{ width: 30, height: 30, borderRadius: 8,
-              background: 'linear-gradient(135deg,#3a5cff,#8847ff)', display: 'inline-block' }} />
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500, fontSize: 14, color: '#5fd75f' }}>
-              <span style={{ fontSize: 11 }}>🎮</span> whoisfrnz
+            {user?.avatar
+              ? <img src={user.avatar} alt="" style={{ width: 30, height: 30, borderRadius: 8, objectFit: 'cover' }} />
+              : <span style={{ width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg,#3a5cff,#8847ff)', display: 'inline-block' }} />
+            }
+            <span style={{ fontWeight: 500, fontSize: 14, color: '#5fd75f' }}>
+              {user?.username ?? 'Player'}
             </span>
             <span style={{ color: '#6b746b', fontSize: 11 }}>▾</span>
           </div>
+          <button onClick={logout} style={{ width: 36, height: 36, borderRadius: 9,
+            background: '#10140f', border: '1px solid rgba(255,255,255,.08)', cursor: 'pointer',
+            color: '#9aa39a', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            title="Log out">⏻</button>
         </div>
       )}
     </header>

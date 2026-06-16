@@ -45,9 +45,19 @@ export interface InventoryItem extends ReelItem {
   openedAt: string;      // ISO timestamp
 }
 
+export interface UserInfo {
+  id: string;
+  steamId: string;
+  username: string;
+  avatar: string | null;
+  email: string | null;
+  balance: number;
+}
+
 interface Store {
   route: Route;
   logged: boolean;
+  user: UserInfo | null;
   inventory: InventoryItem[];
   phase: Phase;
   won: ReelItem | null;
@@ -125,6 +135,9 @@ interface Store {
   closeFairness: () => void;
   openLogin: () => void;
   closeLogin: () => void;
+  setUser: (u: UserInfo) => void;
+  checkSession: () => Promise<void>;
+  logout: () => void;
   recordSpin: (r: SpinRecord) => void;
   setLastSpinHash: (h: string | null) => void;
 }
@@ -140,6 +153,7 @@ const _fi = makeFairInit();
 
 export const useStore = create<Store>((set, get) => ({
   route: 'home',
+  user: null,
   logged: false,
   inventory: [],
   phase: 'idle',
@@ -184,7 +198,19 @@ export const useStore = create<Store>((set, get) => ({
   openLogin: () => set({ loginOpen: true }),
   closeLogin: () => set({ loginOpen: false }),
   login: () => { set({ logged: true, loginOpen: false }); _navigate('/cases'); },
-  logout: () => { set({ logged: false }); _navigate('/'); },
+  setUser: (u) => set({ user: u, logged: true }),
+  checkSession: async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      const u = await res.json();
+      if (u) set({ user: u, logged: true });
+    } catch {}
+  },
+  logout: () => {
+    fetch('/api/auth/logout', { method: 'POST' });
+    set({ logged: false, user: null });
+    _navigate('/');
+  },
   openCase: (c) => {
     set({ currentCase: c, phase: 'idle', won: null, reel: [] });
     _navigate('/cases/' + c.id);
