@@ -324,8 +324,8 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 20, alignItems: 'start' }}>
-        {/* Left panel */}
+      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20, alignItems: 'start' }}>
+        {/* Left panel: case metadata + economics */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
           {/* Case metadata */}
@@ -333,10 +333,8 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
               <img src={draft.image} alt="case" style={{ height: 100, objectFit: 'contain', filter: 'drop-shadow(0 6px 16px rgba(0,0,0,.6))' }} />
             </div>
-
             <Label>Case Name</Label>
             <Input value={draft.name} onChange={v => setDraft(d => ({ ...d, name: v }))} placeholder="e.g. Pandora Box" />
-
             <Label>Case Image</Label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
               {CASE_IMAGES.map(img => (
@@ -353,8 +351,6 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
           {/* Pricing math panel */}
           <div style={{ background: '#0b0e0a', border: '1px solid rgba(255,255,255,.07)', borderRadius: 16, padding: 20 }}>
             <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16, color: '#cfd4cf' }}>Case Economics</div>
-
-            {/* House edge */}
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <Label>House Edge</Label>
@@ -370,8 +366,6 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
                 <span>1% (player-friendly)</span><span>30% (house-heavy)</span>
               </div>
             </div>
-
-            {/* EV breakdown */}
             <div style={{ background: '#0e120e', border: '1px solid rgba(255,255,255,.06)', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 9 }}>
               <MathRow label="Expected Value (EV)" value={`$${ev.toFixed(2)}`} />
               <MathRow label="House Edge" value={`${draft.houseEdge}%`} />
@@ -382,8 +376,6 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
                 valueColor={rtp >= 80 ? '#3ad48f' : rtp >= 70 ? '#e6c33e' : '#eb4b4b'} />
               <MathRow label="House profit per open" value={`$${(suggestedPrice - ev).toFixed(2)}`} />
             </div>
-
-            {/* Auto-computed price display */}
             <div style={{ marginTop: 14, background: 'rgba(95,213,95,.08)', border: '1px solid rgba(95,213,95,.3)', borderRadius: 11, padding: '12px 16px' }}>
               <div style={{ fontSize: 11, color: '#9aa39a', marginBottom: 4 }}>Case price (auto-calculated)</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -395,85 +387,6 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
               <div style={{ fontSize: 10, color: '#4a7a4a', marginTop: 4 }}>
                 EV ${ev.toFixed(2)} ÷ (1 − {draft.houseEdge}%) = ${suggestedPrice.toFixed(2)}
               </div>
-            </div>
-          </div>
-
-          {/* Skins in case with drop chance inputs */}
-          <div style={{ background: '#0b0e0a', border: '1px solid rgba(255,255,255,.07)', borderRadius: 16, padding: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div style={{ fontWeight: 600, fontSize: 14, color: '#cfd4cf' }}>
-                Skins <span style={{ color: '#7fe877' }}>({draft.skins.length})</span>
-              </div>
-              {draft.skins.length > 0 && (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={distributeEvenly}
-                    style={{ fontSize: 10, padding: '4px 10px', borderRadius: 7, background: '#1c241b', border: '1px solid rgba(95,213,95,.2)', color: '#7fe877', cursor: 'pointer' }}>
-                    CS2 weights
-                  </button>
-                  <button onClick={distributeEqual}
-                    style={{ fontSize: 10, padding: '4px 10px', borderRadius: 7, background: '#0e120e', border: '1px solid rgba(255,255,255,.1)', color: '#9aa39a', cursor: 'pointer' }}>
-                    Equal
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Total drop % indicator */}
-            {draft.skins.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '8px 12px',
-                borderRadius: 9, background: totalOk ? 'rgba(58,212,143,.08)' : 'rgba(235,75,75,.08)',
-                border: `1px solid ${totalOk ? 'rgba(58,212,143,.25)' : 'rgba(235,75,75,.25)'}` }}>
-                <div style={{ flex: 1, height: 4, borderRadius: 3, background: '#1a221a', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${Math.min(total, 100)}%`, borderRadius: 3,
-                    background: totalOk ? '#3ad48f' : total > 100 ? '#eb4b4b' : '#e6c33e', transition: 'width .2s' }} />
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: totalOk ? '#3ad48f' : total > 100 ? '#eb4b4b' : '#e6c33e', whiteSpace: 'nowrap' }}>
-                  {total.toFixed(2)}% {totalOk ? '✓' : total > 100 ? '↑ over' : '↓ under'}
-                </span>
-              </div>
-            )}
-
-            {draft.skins.length === 0 && (
-              <div style={{ fontSize: 12, color: '#6b746b', textAlign: 'center', padding: '16px 0' }}>Search and add skins →</div>
-            )}
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 420, overflowY: 'auto' }}>
-              {draft.skins.map(s => (
-                <div key={s.id} style={{ background: '#0e120e', border: `1px solid ${s.color}33`, borderRadius: 11, padding: '10px 12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <SkinImage marketName={s.marketName} imageUrl={s.imageUrl} size={40} glowColor={s.color} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 10, color: '#9aa39a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: s.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.skin}</div>
-                    </div>
-                    <div style={{ fontSize: 12, color: '#cfd4cf', fontWeight: 600, marginRight: 4 }}>${s.price.toFixed(2)}</div>
-                    <button onClick={() => removeSkin(s.id)}
-                      style={{ width: 22, height: 22, borderRadius: 6, background: '#1a1014', border: '1px solid rgba(235,75,75,.2)', color: '#eb4b4b', fontSize: 11, cursor: 'pointer', flexShrink: 0 }}>✕</button>
-                  </div>
-                  {/* Drop chance input */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input
-                      type="range" min={0.01} max={100} step={0.01}
-                      value={s.dropChance}
-                      onChange={e => updateDropChance(s.id, parseFloat(e.target.value))}
-                      style={{ flex: 1, accentColor: s.color }}
-                    />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 72 }}>
-                      <input
-                        type="number" min={0.01} max={100} step={0.01}
-                        value={s.dropChance.toFixed(2)}
-                        onChange={e => updateDropChance(s.id, Math.max(0.01, Math.min(100, parseFloat(e.target.value) || 0)))}
-                        style={{ width: 56, background: '#141814', border: '1px solid rgba(255,255,255,.1)', borderRadius: 7, padding: '4px 7px', color: '#e8ece8', fontSize: 12, outline: 'none', fontFamily: 'var(--font-mono)' }}
-                      />
-                      <span style={{ fontSize: 11, color: '#6b746b' }}>%</span>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 10, color: '#4a7a4a' }}>
-                    <span>EV contribution: ${(s.price * s.dropChance / 100).toFixed(3)}</span>
-                    <span style={{ color: s.color }}>{RAR[s.rar].n}</span>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </div>
@@ -595,6 +508,88 @@ function CaseBuilder({ initial, onSave, onBack }: { initial: AdminCase; onSave: 
               {query ? `No results for "${query}"` : 'Select a category or search by name above'}
             </div>
           )}
+
+          {/* ── Skins in case ── */}
+          <div style={{ background: '#0b0e0a', border: '1px solid rgba(255,255,255,.07)', borderRadius: 16, padding: 20, marginTop: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, color: '#cfd4cf' }}>
+                Skins in Case <span style={{ color: '#7fe877' }}>({draft.skins.length})</span>
+              </div>
+              {draft.skins.length > 0 && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={distributeEvenly}
+                    style={{ fontSize: 11, padding: '5px 12px', borderRadius: 7, background: '#1c241b', border: '1px solid rgba(95,213,95,.2)', color: '#7fe877', cursor: 'pointer' }}>
+                    CS2 weights
+                  </button>
+                  <button onClick={distributeEqual}
+                    style={{ fontSize: 11, padding: '5px 12px', borderRadius: 7, background: '#0e120e', border: '1px solid rgba(255,255,255,.1)', color: '#9aa39a', cursor: 'pointer' }}>
+                    Equal split
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Total drop % bar */}
+            {draft.skins.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, padding: '9px 14px',
+                borderRadius: 10, background: totalOk ? 'rgba(58,212,143,.08)' : 'rgba(235,75,75,.08)',
+                border: `1px solid ${totalOk ? 'rgba(58,212,143,.25)' : 'rgba(235,75,75,.25)'}` }}>
+                <div style={{ flex: 1, height: 5, borderRadius: 3, background: '#1a221a', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${Math.min(total, 100)}%`, borderRadius: 3,
+                    background: totalOk ? '#3ad48f' : total > 100 ? '#eb4b4b' : '#e6c33e', transition: 'width .2s' }} />
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 700, color: totalOk ? '#3ad48f' : total > 100 ? '#eb4b4b' : '#e6c33e', whiteSpace: 'nowrap' }}>
+                  {total.toFixed(2)}% {totalOk ? '✓' : total > 100 ? '↑ over 100%' : '↓ under 100%'}
+                </span>
+              </div>
+            )}
+
+            {draft.skins.length === 0 && (
+              <div style={{ fontSize: 13, color: '#4a7a4a', textAlign: 'center', padding: '24px 0' }}>
+                Click a skin above to add it to the case
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 10 }}>
+              {draft.skins.map(s => (
+                <div key={s.id} style={{ background: '#0e120e', border: `1px solid ${s.color}33`, borderRadius: 11, padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                    <SkinImage marketName={s.marketName} imageUrl={s.imageUrl} size={48} glowColor={s.color} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, color: '#9aa39a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: s.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.skin}</div>
+                      <div style={{ fontSize: 11, color: '#6b746b' }}>{RAR[s.rar].n}</div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontSize: 13, color: '#cfd4cf', fontWeight: 700 }}>${s.price.toFixed(2)}</div>
+                      <div style={{ fontSize: 10, color: '#4a7a4a', marginTop: 2 }}>
+                        EV ${(s.price * s.dropChance / 100).toFixed(3)}
+                      </div>
+                    </div>
+                    <button onClick={() => removeSkin(s.id)}
+                      style={{ width: 26, height: 26, borderRadius: 7, background: '#1a1014', border: '1px solid rgba(235,75,75,.2)', color: '#eb4b4b', fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>✕</button>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <input
+                      type="range" min={0.01} max={100} step={0.01}
+                      value={s.dropChance}
+                      onChange={e => updateDropChance(s.id, parseFloat(e.target.value))}
+                      style={{ flex: 1, accentColor: s.color }}
+                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                      <input
+                        type="number" min={0.01} max={100} step={0.01}
+                        value={s.dropChance.toFixed(2)}
+                        onChange={e => updateDropChance(s.id, Math.max(0.01, Math.min(100, parseFloat(e.target.value) || 0)))}
+                        style={{ width: 60, background: '#141814', border: '1px solid rgba(255,255,255,.1)', borderRadius: 7, padding: '5px 8px', color: '#e8ece8', fontSize: 12, outline: 'none', fontFamily: 'var(--font-mono)' }}
+                      />
+                      <span style={{ fontSize: 11, color: '#6b746b' }}>%</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
