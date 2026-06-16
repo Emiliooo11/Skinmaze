@@ -4,6 +4,7 @@ import { useStore } from '@/app/store/useStore';
 import { randItem, ReelItem } from '@/app/lib/data';
 import { usdToCoins, fmtCoins } from '@/app/lib/currency';
 import { rollToItem } from '@/app/lib/provablyFair';
+import { playSpinSound, playRevealSound } from '@/app/lib/audio';
 import { CoinIcon } from '../CoinIcon';
 import { SkinImage } from '../SkinImage';
 
@@ -110,8 +111,9 @@ export function CaseDetailPage() {
           reelEl.style.transition = `transform ${dur}s cubic-bezier(0.08,0.82,0.14,1)`;
           reelEl.style.transform  = `translateX(${-offset}px)`;
         }
+        playSpinSound(dur);
         if (spinTimer.current) clearTimeout(spinTimer.current);
-        spinTimer.current = setTimeout(() => finishSpin(), dur * 1000 + 150);
+        spinTimer.current = setTimeout(() => { finishSpin(); playRevealSound(); }, dur * 1000 + 150);
       }, 70);
     });
   }
@@ -162,6 +164,8 @@ export function CaseDetailPage() {
 
     setMultiSpinning(true);
 
+    playSpinSound(dur);
+
     // Stagger start slightly per reel for a cascading feel
     wonItems.forEach((_, idx) => {
       setTimeout(() => {
@@ -181,6 +185,7 @@ export function CaseDetailPage() {
     multiTimer.current = setTimeout(() => {
       setMultiSpinning(false);
       setMultiDone(true);
+      playRevealSound();
 
       if (!demo) {
         wonItems.forEach(wonItem => {
