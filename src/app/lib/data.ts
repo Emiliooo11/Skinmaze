@@ -25,7 +25,7 @@ export interface ReelItem {
 }
 
 export interface CaseItem {
-  id: number;
+  id: string;
   name: string;
   price: string;
   image: string;
@@ -158,7 +158,7 @@ export function randItem(): ReelItem {
 
 export function buildCasesAll(): CaseItem[] {
   return CASE_NAMES.map((n, i) => ({
-    id: i,
+    id: String(i),
     name: n,
     price: fmt(priceForCase(i)),
     image: CASE_IMAGES[i % CASE_IMAGES.length],

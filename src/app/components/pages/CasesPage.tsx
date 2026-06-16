@@ -9,7 +9,7 @@ import { RarityBar } from '../RarityBar';
 
 function dbCasesToCaseItems(dbCases: Awaited<ReturnType<typeof fetchCases>>): CaseItem[] {
   return dbCases.map(c => ({
-    id: parseInt(c.id) || 0,
+    id: c.id,
     name: c.name,
     price: c.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     image: c.image_url || '/cases/case-water-camo.png',

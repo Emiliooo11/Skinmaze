@@ -61,7 +61,7 @@ export function HomePage() {
       if (rows.length > 0) {
         const map = new Map<string, CaseItem>();
         rows.forEach(c => map.set(c.id, {
-          id: 0,
+          id: c.id,
           name: c.name,
           price: c.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
           image: c.image_url || '/cases/case-water-camo.png',

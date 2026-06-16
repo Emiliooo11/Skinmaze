@@ -3,6 +3,18 @@ import { create } from 'zustand';
 import { CaseItem, SkinItem, ReelItem } from '@/app/lib/data';
 import { generateSeed, sha256 } from '@/app/lib/provablyFair';
 
+// Module-level navigate function — registered by NavigationProvider on mount
+let _navigate: (path: string) => void = (path) => {
+  if (typeof window !== 'undefined') window.location.href = path;
+};
+export function registerNavigate(fn: (path: string) => void) { _navigate = fn; }
+
+function routeToPath(r: Route): string {
+  if (r === 'home') return '/';
+  if (r === 'casedetail') return '/cases';
+  return '/' + r;
+}
+
 export interface SpinRecord {
   serverSeed: string;
   clientSeed: string;
@@ -69,6 +81,7 @@ interface Store {
 
   setRoute: (r: Route) => void;
   go: (r: Route) => void;
+  loadCase: (c: CaseItem) => void;
   flash: (msg: string) => void;
   login: () => void;
   logout: () => void;
@@ -156,27 +169,29 @@ export const useStore = create<Store>((set, get) => ({
   lastSpinHash: null,
 
   setRoute: (r) => set({ route: r }),
-  go: (r) => { set({ route: r, mpItem: null }); try { window.scrollTo(0, 0); } catch {}; },
+  go: (r) => { set({ route: r, mpItem: null }); _navigate(routeToPath(r)); try { window.scrollTo(0, 0); } catch {}; },
+  loadCase: (c) => { set({ currentCase: c, phase: 'idle', won: null, reel: [] }); },
   flash: (msg) => {
     const prev = get()._toastTimer;
     if (prev) clearTimeout(prev);
     const t = setTimeout(() => set({ toast: null }), 1900);
     set({ toast: msg, _toastTimer: t });
   },
-  login: () => { set({ logged: true }); get().go('cases'); },
-  logout: () => { set({ logged: false }); get().go('home'); },
+  login: () => { set({ logged: true }); _navigate('/cases'); },
+  logout: () => { set({ logged: false }); _navigate('/'); },
   openCase: (c) => {
-    set({ route: 'casedetail', currentCase: c, phase: 'idle', won: null, reel: [] });
+    set({ currentCase: c, phase: 'idle', won: null, reel: [] });
+    _navigate('/cases/' + c.id);
     try { window.scrollTo(0, 0); } catch {}
   },
   startSpin: (reel, won) => set({ phase: 'spin', won, reel }),
   finishSpin: () => set({ phase: 'done' }),
-  closeOpen: () => set({ phase: 'idle' }),
+  closeOpen: () => { set({ phase: 'idle' }); _navigate('/cases'); },
   openAgain: () => { set({ phase: 'idle' }); },
   setPhase: (p) => set({ phase: p }),
   setMultiplier: (n) => set({ multiplier: n }),
-  goProfile: (tab) => { set({ route: 'profile', profileTab: tab || 'settings' }); try { window.scrollTo(0, 0); } catch {}; },
-  goWallet: () => { set({ route: 'wallet', walletView: 'methods', walletTab: 'deposit' }); try { window.scrollTo(0, 0); } catch {}; },
+  goProfile: (tab) => { set({ profileTab: tab || 'settings' }); _navigate('/profile'); try { window.scrollTo(0, 0); } catch {}; },
+  goWallet: () => { set({ walletView: 'methods', walletTab: 'deposit' }); _navigate('/wallet'); try { window.scrollTo(0, 0); } catch {}; },
   openMpItem: (it) => set({ mpItem: it }),
   closeMpItem: () => set({ mpItem: null }),
   setMpType: (t) => set(s => ({ mp: { ...s.mp, type: s.mp.type === t ? null : t } })),
