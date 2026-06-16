@@ -42,6 +42,8 @@ export function CaseDetailPage() {
   const [multiDone, setMultiDone]         = useState(false);
   const [multiWon, setMultiWon]           = useState<ReelItem[]>([]);
   const [multiReels, setMultiReels]       = useState<ReelItem[][]>([]);
+  // 'keep' | 'sell' per item index — default all to 'sell'
+  const [multiDecisions, setMultiDecisions] = useState<('keep' | 'sell')[]>([]);
   const vReelRefs = useRef<(HTMLDivElement | null)[]>([]);
   const multiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -150,6 +152,7 @@ export function CaseDetailPage() {
 
     setMultiReels(reels);
     setMultiWon(wonItems);
+    setMultiDecisions(wonItems.map(() => 'sell'));
     setMultiDone(false);
 
     // Reset all reel positions
@@ -492,70 +495,121 @@ export function CaseDetailPage() {
       )}
 
       {/* ── Multi result overlay ──────────────────────────────────────────── */}
-      {isMulti && multiDone && multiWon.length > 0 && (
-        <div className="anim-pop" style={{ position: 'fixed', inset: 0, zIndex: 100,
-          background: 'rgba(4,6,4,.92)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, overflowY: 'auto' }}>
-          <div style={{ width: 'min(880px,98vw)', background: '#0a0d0a', border: '1px solid rgba(255,255,255,.08)',
-            borderRadius: 22, padding: '28px 28px 24px', boxShadow: '0 40px 100px rgba(0,0,0,.8)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
-              <div>
-                <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 18 }}>You unboxed {multiplier} items!</div>
-                <div style={{ fontSize: 12, color: '#9aa39a', marginTop: 2 }}>{cc.name}</div>
-              </div>
-              <button onClick={handleMultiClose} style={{ width: 38, height: 38, borderRadius: 10, background: '#11140f', border: '1px solid rgba(255,255,255,.1)', color: '#cfd4cf', fontSize: 18, cursor: 'pointer' }}>✕</button>
-            </div>
+      {isMulti && multiDone && multiWon.length > 0 && (() => {
+        const sellVal  = multiWon.reduce((s, item, i) => multiDecisions[i] === 'sell' ? s + parseCoin(item.price) : s, 0);
+        const keepCount = multiDecisions.filter(d => d === 'keep').length;
+        const sellCount = multiDecisions.filter(d => d === 'sell').length;
 
-            {/* Item cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${multiplier}, 1fr)`, gap: 14, marginBottom: 24 }}>
-              {multiWon.map((item, i) => (
-                <div key={i} style={{ borderRadius: 14, background: '#0c100c', border: `1px solid ${item.color}55`,
-                  boxShadow: `0 0 30px -8px ${item.color}`, padding: '16px 12px', textAlign: 'center' }}>
-                  <SkinImage marketName={item.marketName} imageUrl={item.imageUrl} size={100} glowColor={item.color} style={{ margin: '0 auto 10px' }} />
-                  <div style={{ fontSize: 11, color: '#9aa39a' }}>{item.w}</div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: item.color, margin: '2px 0' }}>{item.skin}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 6, fontWeight: 600, fontSize: 13 }}>
-                    <CoinIcon size={12} />{item.price}
-                  </div>
+        function toggleDecision(i: number) {
+          setMultiDecisions(prev => prev.map((d, idx) => idx === i ? (d === 'sell' ? 'keep' : 'sell') : d));
+        }
+
+        function confirmDecisions() {
+          multiWon.forEach((item, i) => {
+            if (multiDecisions[i] === 'keep') keepItem(item, cc.name);
+          });
+          if (sellVal > 0) sellItem('__multi__', sellVal);
+          handleMultiClose();
+        }
+
+        return (
+          <div className="anim-pop" style={{ position: 'fixed', inset: 0, zIndex: 100,
+            background: 'rgba(4,6,4,.92)', backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, overflowY: 'auto' }}>
+            <div style={{ width: 'min(920px,98vw)', background: '#0a0d0a', border: '1px solid rgba(255,255,255,.08)',
+              borderRadius: 22, padding: '28px 28px 24px', boxShadow: '0 40px 100px rgba(0,0,0,.8)' }}>
+
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 18 }}>You unboxed {multiplier} items!</div>
+                  <div style={{ fontSize: 12, color: '#6b746b', marginTop: 3 }}>Click each item to toggle Keep / Sell</div>
                 </div>
-              ))}
-            </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {/* Quick-select shortcuts */}
+                  <button onClick={() => setMultiDecisions(multiWon.map(() => 'keep'))}
+                    style={{ fontFamily: 'var(--font-outfit)', fontSize: 12, fontWeight: 600, color: '#7fe877',
+                      background: 'rgba(95,213,95,.08)', border: '1px solid rgba(95,213,95,.25)',
+                      padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}>Keep All</button>
+                  <button onClick={() => setMultiDecisions(multiWon.map(() => 'sell'))}
+                    style={{ fontFamily: 'var(--font-outfit)', fontSize: 12, fontWeight: 600, color: '#74e36b',
+                      background: 'rgba(70,192,65,.08)', border: '1px solid rgba(70,192,65,.25)',
+                      padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}>Sell All</button>
+                  <button onClick={handleMultiClose}
+                    style={{ width: 38, height: 38, borderRadius: 10, background: '#11140f', border: '1px solid rgba(255,255,255,.1)', color: '#cfd4cf', fontSize: 18, cursor: 'pointer' }}>✕</button>
+                </div>
+              </div>
 
-            {/* Total + actions */}
-            {(() => {
-              const totalVal = multiWon.reduce((s, i) => s + parseCoin(i.price), 0);
-              return (
-                <>
-                  <div style={{ background: '#0e120e', border: '1px solid rgba(255,255,255,.07)', borderRadius: 12,
-                    padding: '14px 20px', marginBottom: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 13, color: '#9aa39a' }}>Total value</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 17 }}>
-                      <CoinIcon size={16} />{fmtCoins(totalVal)}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                    <button onClick={() => { sellItem('__multi__', totalVal); handleMultiClose(); }}
-                      style={{ flex: 1, fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a',
-                        background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '13px 20px', borderRadius: 11, cursor: 'pointer' }}>
-                      Sell All — {fmtCoins(totalVal)} coins
-                    </button>
-                    <button onClick={handleMultiOpenAgain}
-                      style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#cfd4cf',
-                        background: '#10140f', border: '1px solid rgba(255,255,255,.12)', padding: '13px 22px', borderRadius: 11, cursor: 'pointer' }}>
-                      Open Again
-                    </button>
-                    <button onClick={() => { multiWon.forEach(item => keepItem(item, cc.name)); handleMultiClose(); }}
-                      style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#7fe877',
-                        background: 'rgba(95,213,95,.1)', border: '1px solid rgba(95,213,95,.3)', padding: '13px 22px', borderRadius: 11, cursor: 'pointer' }}>
-                      Keep All
-                    </button>
-                  </div>
-                </>
-              );
-            })()}
+              {/* Item cards — clickable to toggle */}
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${multiplier}, 1fr)`, gap: 14, margin: '20px 0 20px' }}>
+                {multiWon.map((item, i) => {
+                  const decision = multiDecisions[i] ?? 'sell';
+                  const isKeep = decision === 'keep';
+                  return (
+                    <div key={i} onClick={() => toggleDecision(i)} style={{
+                      borderRadius: 14, background: '#0c100c',
+                      border: isKeep ? `2px solid ${item.color}` : '2px solid rgba(255,255,255,.1)',
+                      boxShadow: isKeep ? `0 0 28px -6px ${item.color}` : 'none',
+                      padding: '14px 12px 12px', textAlign: 'center', cursor: 'pointer',
+                      transition: 'border-color .15s, box-shadow .15s',
+                      opacity: !isKeep ? 0.75 : 1,
+                      position: 'relative', overflow: 'hidden',
+                    }}>
+                      {/* Decision badge */}
+                      <div style={{
+                        position: 'absolute', top: 8, right: 8,
+                        fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
+                        background: isKeep ? item.color : 'rgba(70,192,65,.85)',
+                        color: '#06270a',
+                      }}>{isKeep ? 'KEEP' : 'SELL'}</div>
+
+                      <SkinImage marketName={item.marketName} imageUrl={item.imageUrl} size={90} glowColor={item.color} style={{ margin: '0 auto 8px' }} />
+                      <div style={{ fontSize: 11, color: '#9aa39a' }}>{item.w}</div>
+                      <div style={{ fontWeight: 700, fontSize: 12, color: item.color, margin: '2px 0' }}>{item.skin}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 6, fontWeight: 600, fontSize: 13 }}>
+                        <CoinIcon size={12} />{item.price}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Summary bar */}
+              <div style={{ background: '#0e120e', border: '1px solid rgba(255,255,255,.07)', borderRadius: 12,
+                padding: '14px 20px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 24 }}>
+                  <span style={{ fontSize: 13, color: '#9aa39a' }}>
+                    Keeping <strong style={{ color: '#7fe877' }}>{keepCount}</strong> item{keepCount !== 1 ? 's' : ''}
+                  </span>
+                  <span style={{ fontSize: 13, color: '#9aa39a' }}>
+                    Selling <strong style={{ color: '#74e36b' }}>{sellCount}</strong> item{sellCount !== 1 ? 's' : ''}
+                    {sellVal > 0 && <> for <strong style={{ color: '#cfd4cf' }}> {fmtCoins(sellVal)} coins</strong></>}
+                  </span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button onClick={confirmDecisions}
+                  style={{ flex: 1, fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 15, color: '#06270a',
+                    background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none',
+                    padding: '14px 20px', borderRadius: 11, cursor: 'pointer',
+                    boxShadow: '0 6px 18px rgba(95,213,95,.3)' }}>
+                  Confirm
+                  {sellCount > 0 && keepCount > 0 && ` — Sell ${sellCount}, Keep ${keepCount}`}
+                  {sellCount > 0 && keepCount === 0 && ` — Sell All (${fmtCoins(sellVal)} coins)`}
+                  {keepCount > 0 && sellCount === 0 && ` — Keep All`}
+                </button>
+                <button onClick={handleMultiOpenAgain}
+                  style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#cfd4cf',
+                    background: '#10140f', border: '1px solid rgba(255,255,255,.12)', padding: '14px 22px', borderRadius: 11, cursor: 'pointer' }}>
+                  Open Again
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
