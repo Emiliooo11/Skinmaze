@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { CASE_IMAGES, RAR, Rarity, buildCasesAll, CaseItem } from '@/app/lib/data';
+import { CASE_IMAGES, RAR, Rarity } from '@/app/lib/data';
+import { fetchCases, upsertCase, deleteCase as dbDeleteCase, fetchHomeLayout, saveHomeLayout as dbSaveHomeLayout, fetchImageCollections, saveImageCollections, deleteImageCollection, DbCase } from '@/app/lib/db';
 
 // ── Home layout config ────────────────────────────────────────────────────────
 
@@ -8,16 +9,16 @@ export interface HomeSection {
   id: string;
   title: string;
   icon: string;
-  caseIds: number[];
+  caseIds: string[];
 }
 
 export const HOME_LAYOUT_KEY = 'sm_home_layout';
 
 export const DEFAULT_HOME_LAYOUT: HomeSection[] = [
-  { id: 'section1', title: 'Knives Collection',      icon: '🔪', caseIds: [0,1,2,3,4] },
-  { id: 'section2', title: 'Gloves Collection',      icon: '🧤', caseIds: [15,16,17,18,19] },
-  { id: 'section3', title: 'Ruby Knifes Collection', icon: '🍁', caseIds: [1,2,3,4,5] },
-  { id: 'section4', title: 'Best Sellers',           icon: '⭐', caseIds: [2,3,4,5,6] },
+  { id: 'section1', title: 'Knives Collection',      icon: '🔪', caseIds: [] },
+  { id: 'section2', title: 'Gloves Collection',      icon: '🧤', caseIds: [] },
+  { id: 'section3', title: 'Ruby Knifes Collection', icon: '🍁', caseIds: [] },
+  { id: 'section4', title: 'Best Sellers',           icon: '⭐', caseIds: [] },
 ];
 
 function loadHomeLayout(): HomeSection[] {
@@ -100,13 +101,26 @@ interface AdminCase {
   createdAt: string;
 }
 
-const STORAGE_KEY = 'sm_admin_cases';
-
-function loadCases(): AdminCase[] {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
-}
-function saveCases(cases: AdminCase[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(cases));
+function dbCaseToAdmin(c: DbCase): AdminCase {
+  return {
+    id: c.id,
+    name: c.name,
+    price: c.price.toFixed(2),
+    houseEdge: c.house_edge,
+    image: c.image_url || CASE_IMAGES[0],
+    createdAt: c.created_at,
+    skins: (c.skins || []).map(s => ({
+      id: s.id,
+      name: s.name,
+      skin: s.skin,
+      marketName: s.market_name,
+      rar: s.rarity as Rarity,
+      color: s.color,
+      imageUrl: s.image_url,
+      price: s.price,
+      dropChance: s.drop_chance,
+    })),
+  };
 }
 
 // Compute expected value and suggested price from skins + house edge
@@ -141,40 +155,75 @@ export function AdminPage() {
   const [editing, setEditing] = useState<AdminCase | null>(null);
   const [collections, setCollections] = useState<ImageCollection[]>([]);
   const [homeLayout, setHomeLayout] = useState<HomeSection[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setCases(loadCases());
-    setCollections(loadCollections());
-    setHomeLayout(loadHomeLayout());
+    Promise.all([
+      fetchCases(),
+      fetchImageCollections(),
+      fetchHomeLayout(),
+    ]).then(([dbCases, dbCols, dbLayout]) => {
+      setCases(dbCases.map(dbCaseToAdmin));
+      setCollections(dbCols.length ? dbCols : loadCollections());
+      setHomeLayout(dbLayout.length ? dbLayout.map(s => ({
+        id: s.id, title: s.title, icon: s.icon, caseIds: s.case_ids,
+      })) : DEFAULT_HOME_LAYOUT);
+      setLoading(false);
+    });
   }, []);
 
-  function updateCollections(cols: ImageCollection[]) {
+  async function updateCollections(cols: ImageCollection[]) {
     setCollections(cols);
     saveCollections(cols);
+    await saveImageCollections(cols.map(c => ({ id: c.id, name: c.name, images: c.images })));
   }
 
-  function updateHomeLayout(layout: HomeSection[]) {
+  async function updateHomeLayout(layout: HomeSection[]) {
     setHomeLayout(layout);
     saveHomeLayout(layout);
+    await dbSaveHomeLayout(layout.map(s => ({
+      id: s.id, title: s.title, icon: s.icon, case_ids: s.caseIds,
+    })));
   }
 
-  function saveCase(c: AdminCase) {
-    const next = cases.some(x => x.id === c.id)
-      ? cases.map(x => x.id === c.id ? c : x)
-      : [...cases, c];
-    setCases(next);
-    saveCases(next);
+  async function saveCase(c: AdminCase) {
+    const saved = await upsertCase({
+      id: c.id,
+      name: c.name,
+      price: parseFloat(c.price) || 0,
+      house_edge: c.houseEdge,
+      image_url: c.image,
+      skins: c.skins.map(s => ({
+        market_name: s.marketName,
+        name: s.name,
+        skin: s.skin,
+        image_url: s.imageUrl,
+        rarity: s.rar,
+        color: s.color,
+        price: s.price,
+        drop_chance: s.dropChance,
+      })),
+    });
+    if (saved) {
+      const updated = dbCaseToAdmin({ ...saved, skins: c.skins.map(s => ({
+        id: s.id, case_id: saved.id, market_name: s.marketName, name: s.name,
+        skin: s.skin, image_url: s.imageUrl, rarity: s.rar, color: s.color,
+        price: s.price, drop_chance: s.dropChance,
+      }))});
+      setCases(prev => prev.some(x => x.id === saved.id)
+        ? prev.map(x => x.id === saved.id ? updated : x)
+        : [...prev, updated]);
+    }
   }
 
-  function deleteCase(id: string) {
-    const next = cases.filter(x => x.id !== id);
-    setCases(next);
-    saveCases(next);
+  async function handleDeleteCase(id: string) {
+    await dbDeleteCase(id);
+    setCases(prev => prev.filter(x => x.id !== id));
   }
 
   function newCase() {
     const c: AdminCase = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       name: 'New Case',
       price: '0.00',
       houseEdge: DEFAULT_HOUSE_EDGE,
@@ -191,7 +240,7 @@ export function AdminPage() {
       <CaseBuilder
         initial={editing}
         collections={collections}
-        onSave={c => { saveCase(c); setEditing(null); setView('list'); }}
+        onSave={async c => { await saveCase(c); setEditing(null); setView('list'); }}
         onBack={() => { setEditing(null); setView('list'); }}
       />
     );
@@ -213,6 +262,7 @@ export function AdminPage() {
         layout={homeLayout}
         onChange={updateHomeLayout}
         onBack={() => setView('list')}
+        cases={cases}
       />
     );
   }
@@ -239,7 +289,11 @@ export function AdminPage() {
         </div>
       </div>
 
-      {cases.length === 0 ? (
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 80, color: '#6b746b', fontSize: 14 }}>
+          Loading cases…
+        </div>
+      ) : cases.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 80, color: '#6b746b', fontSize: 14 }}>
           No cases yet. Click <strong style={{ color: '#7fe877' }}>+ New Case</strong> to build one.
         </div>
@@ -266,7 +320,7 @@ export function AdminPage() {
                     style={{ flex: 1, background: '#1c241b', border: '1px solid rgba(95,213,95,.2)', borderRadius: 9, padding: '9px 0', color: '#7fe877', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
                     Edit
                   </button>
-                  <button onClick={() => deleteCase(c.id)}
+                  <button onClick={() => handleDeleteCase(c.id)}
                     style={{ width: 38, background: '#1a1014', border: '1px solid rgba(235,75,75,.2)', borderRadius: 9, color: '#eb4b4b', fontSize: 15, cursor: 'pointer' }}>
                     🗑
                   </button>
@@ -797,12 +851,11 @@ function CaseBuilder({ initial, collections, onSave, onBack }: { initial: AdminC
 
 // ── Home Layout Manager ───────────────────────────────────────────────────────
 
-const ALL_CASES = buildCasesAll();
-
-function HomeLayoutManager({ layout, onChange, onBack }: {
+function HomeLayoutManager({ layout, onChange, onBack, cases: allCases }: {
   layout: HomeSection[];
   onChange: (l: HomeSection[]) => void;
   onBack: () => void;
+  cases: AdminCase[];
 }) {
   const [pickingFor, setPickingFor] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -811,7 +864,7 @@ function HomeLayoutManager({ layout, onChange, onBack }: {
     onChange(layout.map(s => s.id === id ? { ...s, ...patch } : s));
   }
 
-  function toggleCase(sectionId: string, caseId: number) {
+  function toggleCase(sectionId: string, caseId: string) {
     const section = layout.find(s => s.id === sectionId)!;
     const has = section.caseIds.includes(caseId);
     const next = has
@@ -890,7 +943,7 @@ function HomeLayoutManager({ layout, onChange, onBack }: {
             {/* Selected cases preview */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10, marginBottom: 14 }}>
               {section.caseIds.map(cid => {
-                const c = ALL_CASES[cid];
+                const c = allCases.find(x => x.id === cid);
                 if (!c) return null;
                 return (
                   <div key={cid} style={{ position: 'relative', background: '#0e120e',
@@ -927,7 +980,7 @@ function HomeLayoutManager({ layout, onChange, onBack }: {
                   Click a case to add it to this section
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(110px,1fr))', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
-                  {ALL_CASES.map(c => {
+                  {allCases.map(c => {
                     const selected = section.caseIds.includes(c.id);
                     return (
                       <div key={c.id}

@@ -1,13 +1,12 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useStore } from '@/app/store/useStore';
-import { buildCasesAll, PAY_METHODS, BEST_TABS } from '@/app/lib/data';
+import { CaseItem, PAY_METHODS, BEST_TABS } from '@/app/lib/data';
 import { HOME_LAYOUT_KEY, DEFAULT_HOME_LAYOUT, HomeSection } from '@/app/components/pages/AdminPage';
+import { fetchCases, fetchHomeLayout } from '@/app/lib/db';
 import { CoinIcon } from '../CoinIcon';
 import { Placeholder } from '../Placeholder';
 import { RarityBar } from '../RarityBar';
-
-const casesAll = buildCasesAll();
 
 function tabStyle(active: boolean) {
   return {
@@ -43,19 +42,43 @@ const SECTION_GLOWS = [
 export function HomePage() {
   const { go, login, openCase, flash, bestTab, setBestTab } = useStore();
   const [layout, setLayout] = useState<HomeSection[]>(DEFAULT_HOME_LAYOUT);
+  const [dbCaseMap, setDbCaseMap] = useState<Map<string, CaseItem>>(new Map());
 
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(HOME_LAYOUT_KEY) || 'null');
-      if (stored) setLayout(stored);
-    } catch {}
+    // Load layout from Supabase, fall back to localStorage
+    fetchHomeLayout().then(rows => {
+      if (rows.length > 0) {
+        setLayout(rows.map(r => ({ id: r.id, title: r.title, icon: r.icon, caseIds: r.case_ids })));
+      } else {
+        try {
+          const stored = JSON.parse(localStorage.getItem(HOME_LAYOUT_KEY) || 'null');
+          if (stored) setLayout(stored);
+        } catch {}
+      }
+    });
+    // Load cases from Supabase for section rendering
+    fetchCases().then(rows => {
+      if (rows.length > 0) {
+        const map = new Map<string, CaseItem>();
+        rows.forEach(c => map.set(c.id, {
+          id: 0,
+          name: c.name,
+          price: c.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          image: c.image_url || '/cases/case-water-camo.png',
+        }));
+        setDbCaseMap(map);
+      }
+    });
   }, []);
 
+  const resolveCases = (ids: string[]): CaseItem[] =>
+    ids.map(id => dbCaseMap.get(id)).filter(Boolean) as CaseItem[];
+
   const [s1, s2, s3, s4] = layout;
-  const section1Cases = (s1?.caseIds ?? []).map(id => casesAll[id]).filter(Boolean);
-  const section2Cases = (s2?.caseIds ?? []).map(id => casesAll[id]).filter(Boolean);
-  const section3Cases = (s3?.caseIds ?? []).map(id => casesAll[id]).filter(Boolean);
-  const bestItems     = (s4?.caseIds ?? []).map(id => casesAll[id]).filter(Boolean);
+  const section1Cases = resolveCases(s1?.caseIds ?? []);
+  const section2Cases = resolveCases(s2?.caseIds ?? []);
+  const section3Cases = resolveCases(s3?.caseIds ?? []);
+  const bestItems     = resolveCases(s4?.caseIds ?? []);
 
   return (
     <div>

@@ -1,11 +1,22 @@
 'use client';
+import { useState, useEffect } from 'react';
 import { useStore } from '@/app/store/useStore';
-import { buildCasesAll, CASE_TABS } from '@/app/lib/data';
+import { buildCasesAll, CASE_TABS, CaseItem } from '@/app/lib/data';
+import { fetchCases } from '@/app/lib/db';
 import { CoinIcon } from '../CoinIcon';
 import { Placeholder } from '../Placeholder';
 import { RarityBar } from '../RarityBar';
 
-const casesAll = buildCasesAll();
+function dbCasesToCaseItems(dbCases: Awaited<ReturnType<typeof fetchCases>>): CaseItem[] {
+  return dbCases.map(c => ({
+    id: parseInt(c.id) || 0,
+    name: c.name,
+    price: c.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    image: c.image_url || '/cases/case-water-camo.png',
+  }));
+}
+
+const staticCases = buildCasesAll();
 
 function tabStyle(active: boolean) {
   return {
@@ -17,7 +28,15 @@ function tabStyle(active: boolean) {
 
 export function CasesPage() {
   const { flash, openCase, caseQuery, setCaseQuery, caseTab, setCaseTab, fav, setFav } = useStore();
+  const [dbCases, setDbCases] = useState<CaseItem[] | null>(null);
 
+  useEffect(() => {
+    fetchCases().then(rows => {
+      if (rows.length > 0) setDbCases(dbCasesToCaseItems(rows));
+    });
+  }, []);
+
+  const casesAll = dbCases ?? staticCases;
   const grid = casesAll.filter(c => !caseQuery || c.name.toLowerCase().includes(caseQuery.toLowerCase()));
 
   return (
