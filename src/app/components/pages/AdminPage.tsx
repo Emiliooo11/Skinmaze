@@ -952,6 +952,7 @@ function CaseBuilder({ initial, collections, onSave, onBack }: { initial: AdminC
   const [query, setQuery] = useState('');
   const [catFilter, setCatFilter] = useState('');
   const [rarFilter, setRarFilter] = useState('');
+  const [wearFilter, setWearFilter] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [page, setPage] = useState(0);
@@ -1004,7 +1005,7 @@ function CaseBuilder({ initial, collections, onSave, onBack }: { initial: AdminC
     setPage(0);
     doFetch({ pg: 0 });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catFilter, rarFilter]);
+  }, [catFilter, rarFilter, wearFilter]);
 
   // Fetch when page changes (but not on initial mount — handled above)
   const isFirstMount = useState(true);
@@ -1024,6 +1025,7 @@ function CaseBuilder({ initial, collections, onSave, onBack }: { initial: AdminC
       if (q)           qs.set('q', q);
       if (catFilter)   qs.set('category', catFilter);
       if (rarFilter)   qs.set('rarity', rarFilter);
+      if (wearFilter)  qs.set('wear', wearFilter);
       if (minPrice)    qs.set('minPrice', minPrice);
       if (maxPrice)    qs.set('maxPrice', maxPrice);
       const res = await fetch(`/api/skin-search?${qs}`);
@@ -1239,6 +1241,29 @@ function CaseBuilder({ initial, collections, onSave, onBack }: { initial: AdminC
                       color: active ? r.color : '#9aa39a' }}>
                     {r.key && <div style={{ width: 8, height: 8, borderRadius: 2, background: r.color, flexShrink: 0 }} />}
                     {r.label}
+                  </span>
+                );
+              })}
+            </div>
+
+            {/* Wear condition chips */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+              {[
+                { key: '', label: 'All Wears' },
+                { key: 'Factory New',    label: 'FN' },
+                { key: 'Minimal Wear',   label: 'MW' },
+                { key: 'Field-Tested',   label: 'FT' },
+                { key: 'Well-Worn',      label: 'WW' },
+                { key: 'Battle-Scarred', label: 'BS' },
+              ].map(w => {
+                const active = wearFilter === w.key;
+                return (
+                  <span key={w.key} onClick={() => setWearFilter(w.key)}
+                    style={{ padding: '5px 11px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                      background: active ? 'rgba(95,213,95,.14)' : '#0e120e',
+                      border: active ? '1px solid rgba(95,213,95,.4)' : '1px solid rgba(255,255,255,.08)',
+                      color: active ? '#7fe877' : '#9aa39a', letterSpacing: '0.03em' }}>
+                    {w.label}
                   </span>
                 );
               })}

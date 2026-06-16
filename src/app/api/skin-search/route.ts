@@ -71,6 +71,7 @@ export async function GET(req: NextRequest) {
   const rarity   = searchParams.get('rarity') || '';
   const count    = Math.min(parseInt(searchParams.get('count') || String(PAGE_SIZE)), PAGE_SIZE);
   const start    = Math.max(0, parseInt(searchParams.get('start') || '0'));
+  const wear     = searchParams.get('wear') || '';
   const minPrice = parseFloat(searchParams.get('minPrice') || '0');
   const maxPrice = parseFloat(searchParams.get('maxPrice') || '0');
 
@@ -102,7 +103,9 @@ export async function GET(req: NextRequest) {
     sort_dir: sortDir,
   });
 
-  if (q) base.set('query', q);
+  // Append wear condition to query so Steam pre-filters (wear appears in hash_name parens)
+  const steamQuery = [q, wear ? `(${wear})` : ''].filter(Boolean).join(' ');
+  if (steamQuery) base.set('query', steamQuery);
 
   // Weapon category filter
   const weaponTags = category && CATEGORY_TAGS[category] ? CATEGORY_TAGS[category] : [];
@@ -132,6 +135,9 @@ export async function GET(req: NextRequest) {
     let results: ReturnType<typeof parseSkin>[] = (json.results || [])
       .filter((item: SteamItem) => item.hash_name.includes(' | '))
       .map(parseSkin);
+
+    // Apply wear filter
+    if (wear) results = results.filter(s => s.wear === wear);
 
     // Apply price range filter
     if (hasMinPrice) results = results.filter(s => s.price >= minPrice);
