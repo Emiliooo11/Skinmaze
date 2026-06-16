@@ -15,13 +15,8 @@ export function TopBar() {
       padding: '16px 34px', position: 'relative', zIndex: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 46 }}>
         {/* Logo */}
-        <div onClick={() => go('home')} style={{ display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer' }}>
-          <div style={{ width: 38, height: 38, borderRadius: 9, background: 'linear-gradient(150deg,#74e36b,#3fb13c)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'var(--font-poppins)', fontWeight: 800, color: '#06270a', fontSize: 17,
-            boxShadow: '0 0 18px rgba(95,213,95,.45)' }}>SM</div>
-          <span style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 20,
-            letterSpacing: '1.5px', color: '#6fe267' }}>SKIN MAZE</span>
+        <div onClick={() => go('home')} style={{ cursor: 'pointer' }}>
+          <img src="/logo.png" alt="SKIN MAZE" style={{ height: 28, width: 'auto', display: 'block' }} />
         </div>
 
         <nav style={{ display: 'flex', alignItems: 'center', gap: 30 }}>

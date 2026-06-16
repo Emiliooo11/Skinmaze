@@ -67,16 +67,8 @@ export function LoginModal() {
         {/* Left — mascot */}
         <div style={{ width: 380, flexShrink: 0, position: 'relative', overflow: 'hidden', minHeight: 520, background: '#0d1117' }}>
           <img src="/login-mascot.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', display: 'block' }} />
-          <div style={{ position: 'absolute', top: 20, left: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: 10,
-              background: 'linear-gradient(150deg,#74e36b,#3fb13c)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'var(--font-poppins)', fontWeight: 900, color: '#06270a', fontSize: 16,
-              boxShadow: '0 0 18px rgba(95,213,95,.5)',
-            }}>SM</div>
-            <span style={{ fontFamily: 'var(--font-poppins)', fontWeight: 800, fontSize: 22,
-              letterSpacing: '1.5px', color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,.6)' }}>SKIN MAZE</span>
+          <div style={{ position: 'absolute', top: 20, left: 20 }}>
+            <img src="/logo.png" alt="SKIN MAZE" style={{ height: 26, width: 'auto', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,.7))' }} />
           </div>
         </div>
 
