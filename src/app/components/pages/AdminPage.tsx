@@ -1001,7 +1001,6 @@ function CaseBuilder({ initial, collections, onSave, onBack }: { initial: AdminC
 
   // Reset to page 0 when filters change, then fetch
   useEffect(() => {
-    if (query.trim()) return;
     setPage(0);
     doFetch({ pg: 0 });
   // eslint-disable-next-line react-hooks/exhaustive-deps

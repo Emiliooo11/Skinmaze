@@ -13,7 +13,6 @@ const COLOR_RAR: Record<string, { rar: string; color: string; label: string }> =
 };
 const DEFAULT_RAR = { rar: 'blue', color: '#4b69ff', label: 'Mil-Spec Grade' };
 
-// Category → Steam weapon tags (multiple tags = OR'd together)
 const CATEGORY_TAGS: Record<string, string[]> = {
   Rifle:      ['weapon_ak47','weapon_m4a4','weapon_m4a1_silencer','weapon_sg556','weapon_aug','weapon_galilar','weapon_famas'],
   Pistol:     ['weapon_deagle','weapon_glock','weapon_usp_silencer','weapon_p250','weapon_fiveseven','weapon_tec9','weapon_cz75a','weapon_revolver','weapon_p2000','weapon_elite'],
@@ -25,7 +24,6 @@ const CATEGORY_TAGS: Record<string, string[]> = {
   Gloves:     ['weapon_hand_wrap'],
 };
 
-// Rarity → Steam tag
 const RARITY_TAGS: Record<string, string> = {
   blue:   'tag_Rarity_Rare',
   purple: 'tag_Rarity_Mythical',
@@ -37,8 +35,6 @@ function parseSkin(item: SteamItem) {
   const desc = item.asset_description;
   const nameColor = (desc.name_color || '').toLowerCase();
   const rarInfo = COLOR_RAR[nameColor] || DEFAULT_RAR;
-  const typeParts = (desc.type || '').split(' ');
-  const category = typeParts[typeParts.length - 1] || 'Other';
   const wearMatch = item.hash_name.match(/\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)/);
   const wear = wearMatch?.[1] || '';
   const pipeIdx = item.hash_name.indexOf(' | ');
@@ -53,7 +49,6 @@ function parseSkin(item: SteamItem) {
     skin,
     fullName: item.hash_name,
     wear,
-    category,
     rar: rarInfo.rar,
     color: rarInfo.color,
     rarityName: rarInfo.label,
@@ -66,51 +61,61 @@ function parseSkin(item: SteamItem) {
 }
 
 const PAGE_SIZE = 48;
+// Steam's render endpoint max is 100 per call
+const STEAM_MAX = 100;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const q        = searchParams.get('q') || '';
   const category = searchParams.get('category') || '';
   const rarity   = searchParams.get('rarity') || '';
-  const count    = Math.min(parseInt(searchParams.get('count') || String(PAGE_SIZE)), 100);
+  const count    = Math.min(parseInt(searchParams.get('count') || String(PAGE_SIZE)), PAGE_SIZE);
   const start    = Math.max(0, parseInt(searchParams.get('start') || '0'));
-  const sort     = searchParams.get('sort') || 'price_desc';
-  const minPrice = parseFloat(searchParams.get('minPrice') || '0');   // USD
-  const maxPrice = parseFloat(searchParams.get('maxPrice') || '0');   // USD, 0 = no limit
+  const minPrice = parseFloat(searchParams.get('minPrice') || '0');
+  const maxPrice = parseFloat(searchParams.get('maxPrice') || '0');
 
-  const [sortCol, sortDir] = sort === 'price_asc'
-    ? ['price', 'asc']
-    : sort === 'name'
-      ? ['name', 'asc']
-      : ['price', 'desc'];
+  const hasMinPrice = minPrice > 0;
+  const hasMaxPrice = maxPrice > 0;
+  const hasPriceFilter = hasMinPrice || hasMaxPrice;
 
-  const hasPriceFilter = minPrice > 0 || maxPrice > 0;
-  // Fetch a larger batch when price filtering so we have enough after filtering
-  const fetchCount = hasPriceFilter ? Math.min(count * 4, 200) : count;
+  // Pick sort direction to get the most relevant items into our limited fetch window:
+  // - maxPrice only → sort asc (cheapest first, so items below max appear early)
+  // - minPrice only → sort desc (most expensive first, so items above min appear early)
+  // - both → sort asc (scan from cheapest upward through the range)
+  // - no price filter → sort desc (most expensive / popular first)
+  let sortCol = 'price';
+  let sortDir = 'desc';
+  if (hasMaxPrice && !hasMinPrice) sortDir = 'asc';
+  if (hasMinPrice && hasMaxPrice)  sortDir = 'asc';
+
+  // When price filtering, fetch the max Steam allows so we have the most items to filter from.
+  // When paginating without price filter, use the requested window directly.
+  const fetchCount = hasPriceFilter ? STEAM_MAX : Math.min(count, STEAM_MAX);
+  const fetchStart = hasPriceFilter ? 0 : start;
 
   const base = new URLSearchParams({
     appid: '730',
     norender: '1',
     count: String(fetchCount),
-    start: String(hasPriceFilter ? 0 : start),
+    start: String(fetchStart),
     sort_column: sortCol,
     sort_dir: sortDir,
   });
 
   if (q) base.set('query', q);
 
-  // Weapon category tags
+  // Weapon category filter
   const weaponTags = category && CATEGORY_TAGS[category] ? CATEGORY_TAGS[category] : [];
   for (const tag of weaponTags) {
     base.append('category_730_Weapon[]', `tag_${tag}`);
   }
 
-  // Rarity tag
+  // Rarity filter
   if (rarity && RARITY_TAGS[rarity]) {
     base.append('category_730_Rarity[]', RARITY_TAGS[rarity]);
   }
 
-  // When no query and no category, default to popular weapons (exclude souvenir/sticker noise)
+  // Default scope: rifles + pistols + snipers when no query and no category selected
   if (!q && !category) {
     for (const tag of [...CATEGORY_TAGS.Rifle, ...CATEGORY_TAGS.Pistol, ...CATEGORY_TAGS.Sniper]) {
       base.append('category_730_Weapon[]', `tag_${tag}`);
@@ -123,18 +128,24 @@ export async function GET(req: NextRequest) {
     if (!res.ok) throw new Error(`Steam Market ${res.status}`);
     const json = await res.json();
 
-    // Filter out items without a pipe (stickers, cases, keys, patches, etc.)
-    let results = (json.results || [])
+    // Parse and filter out non-skin items (no pipe = stickers, cases, keys…)
+    let results: ReturnType<typeof parseSkin>[] = (json.results || [])
       .filter((item: SteamItem) => item.hash_name.includes(' | '))
       .map(parseSkin);
 
-    // Apply price filter server-side (Steam's render endpoint ignores price params)
-    if (minPrice > 0) results = results.filter((s: ReturnType<typeof parseSkin>) => s.price >= minPrice);
-    if (maxPrice > 0) results = results.filter((s: ReturnType<typeof parseSkin>) => s.price <= maxPrice);
+    // Apply price range filter
+    if (hasMinPrice) results = results.filter(s => s.price >= minPrice);
+    if (hasMaxPrice) results = results.filter(s => s.price <= maxPrice);
 
-    // When price filtering, paginate the filtered results manually
-    const total = hasPriceFilter ? results.length : (json.total_count ?? results.length);
-    if (hasPriceFilter) results = results.slice(start, start + count);
+    // When price filtering we do our own pagination over the filtered set.
+    // Otherwise Steam handles pagination via start/count.
+    const total = hasPriceFilter
+      ? results.length
+      : (json.total_count ?? results.length);
+
+    if (hasPriceFilter) {
+      results = results.slice(start, start + count);
+    }
 
     return NextResponse.json({ results, total });
   } catch (err) {

@@ -102,12 +102,15 @@ export function Ticker() {
 
       {/* Side buttons */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 7, paddingRight: 14, flexShrink: 0 }}>
-        <div onClick={() => go('cases')} style={{ width: 44, height: 44, borderRadius: 10,
-          background: '#10140f', border: '1px solid rgba(255,255,255,.08)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, cursor: 'pointer' }}>🎒</div>
         <div style={{ width: 44, height: 44, borderRadius: 10,
           background: '#10140f', border: '1px solid rgba(255,255,255,.08)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, color: '#9aa39a' }}>🕘</div>
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9aa39a' }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+            <path d="M12 7v5l4 2"/>
+          </svg>
+        </div>
       </div>
 
       {/* Scrolling track */}
