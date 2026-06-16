@@ -31,6 +31,19 @@ export interface CaseItem {
   name: string;
   price: string;
   image: string;
+  skins?: CaseSkin[];
+}
+
+export interface CaseSkin {
+  id: string;
+  w: string;
+  skin: string;
+  rar: Rarity;
+  color: string;
+  price: number;    // in coins
+  dropChance: number;
+  marketName: string;
+  imageUrl: string;
 }
 
 // 6 real case images in /public/cases/ — cycled across all 30 case slots
@@ -155,7 +168,17 @@ export function pickRar(): Rarity {
   return 'blue';
 }
 
-export function randItem(): ReelItem {
+export function randItem(caseSkins?: CaseSkin[]): ReelItem {
+  if (caseSkins && caseSkins.length > 0) {
+    const total = caseSkins.reduce((s, sk) => s + sk.dropChance, 0);
+    let cursor = Math.random() * total;
+    let picked = caseSkins[caseSkins.length - 1];
+    for (const sk of caseSkins) {
+      cursor -= sk.dropChance;
+      if (cursor <= 0) { picked = sk; break; }
+    }
+    return { w: picked.w, skin: picked.skin, rar: picked.rar, color: picked.color, price: fmt(picked.price), marketName: picked.marketName, imageUrl: picked.imageUrl };
+  }
   const rar = pickRar();
   const pool = POOL.filter(p => p.rar === rar);
   const p = pool[Math.floor(Math.random() * pool.length)] || POOL[0];
@@ -191,8 +214,20 @@ function midPrice(rar: Rarity): number {
   return usdToCoins((lo + hi) / 2);
 }
 
-/** All items in POOL sorted rarest-first, with per-item drop chance (shared equally within rarity) */
-export function buildCaseContents(): Array<{ w: string; skin: string; rar: Rarity; color: string; marketName: string; imageUrl: string; chancePct: string; price: string }> {
+/** All items sorted rarest-first, with per-item drop chance. Uses case skins when provided, else hardcoded POOL. */
+export function buildCaseContents(caseSkins?: CaseSkin[]): Array<{ w: string; skin: string; rar: Rarity; color: string; marketName: string; imageUrl: string; chancePct: string; price: string }> {
+  if (caseSkins && caseSkins.length > 0) {
+    const sorted = [...caseSkins].sort((a, b) => {
+      const order = RAR_ORDER.indexOf(a.rar) - RAR_ORDER.indexOf(b.rar);
+      return order !== 0 ? order : a.dropChance - b.dropChance;
+    });
+    return sorted.map(sk => ({
+      w: sk.w, skin: sk.skin, rar: sk.rar, color: sk.color,
+      marketName: sk.marketName, imageUrl: sk.imageUrl,
+      chancePct: sk.dropChance < 1 ? sk.dropChance.toFixed(2) : sk.dropChance.toFixed(1),
+      price: fmt(sk.price),
+    }));
+  }
   const byRarity = RAR_ORDER.map(rar => {
     const items = POOL.filter(p => p.rar === rar);
     const perItem = RAR_CHANCES[rar] / items.length;

@@ -1,4 +1,4 @@
-import { POOL, RAR, Rarity, ReelItem, priceFor, fmt } from './data';
+import { POOL, RAR, Rarity, ReelItem, CaseSkin, priceFor, fmt } from './data';
 import { usdToCoins } from './currency';
 
 // ── Crypto helpers ──────────────────────────────────────────────────────────
@@ -56,21 +56,40 @@ export async function rollToItem(
   serverSeed: string,
   clientSeed: string,
   nonce: number,
+  caseSkins?: CaseSkin[],
 ): Promise<ReelItem & { roll: number; hash: string }> {
   const hash = await hmacSha256(serverSeed, `${clientSeed}:${nonce}`);
 
-  // First 4 bytes → rarity roll
+  // First 4 bytes → 0-1 roll used for item selection
   const rarityInt = parseInt(hash.slice(0, 8), 16);
   const rarityRoll = rarityInt / 0x100000000;
-  const rar = rollToRarity(rarityRoll);
 
-  // Next 4 bytes → item within rarity
+  // When the case has its own skins, use their drop_chance weights directly
+  if (caseSkins && caseSkins.length > 0) {
+    const totalWeight = caseSkins.reduce((s, sk) => s + sk.dropChance, 0);
+    let cursor = rarityRoll * totalWeight;
+    let picked = caseSkins[caseSkins.length - 1];
+    for (const sk of caseSkins) {
+      cursor -= sk.dropChance;
+      if (cursor <= 0) { picked = sk; break; }
+    }
+    return {
+      w: picked.w, skin: picked.skin, rar: picked.rar, color: picked.color,
+      price: fmt(picked.price),
+      marketName: picked.marketName,
+      imageUrl: picked.imageUrl,
+      roll: rarityRoll,
+      hash,
+    };
+  }
+
+  // Fallback: hardcoded POOL with rarity tiers
+  const rar = rollToRarity(rarityRoll);
   const itemInt = parseInt(hash.slice(8, 16), 16);
   const pool = POOL.filter(p => p.rar === rar);
   const itemIdx = itemInt % pool.length;
   const p = pool[itemIdx] || POOL[0];
 
-  // Next 4 bytes → price within range
   const priceInt = parseInt(hash.slice(16, 24), 16);
   const priceRoll = priceInt / 0x100000000;
   const ranges: Record<Rarity, [number, number]> = {

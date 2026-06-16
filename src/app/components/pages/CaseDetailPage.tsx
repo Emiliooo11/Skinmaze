@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useStore } from '@/app/store/useStore';
-import { randItem, ReelItem, buildCaseContents } from '@/app/lib/data';
+import { randItem, ReelItem, CaseSkin, buildCaseContents } from '@/app/lib/data';
 import { usdToCoins, fmtCoins } from '@/app/lib/currency';
 import { rollToItem } from '@/app/lib/provablyFair';
 import { playSpinSound, playRevealSound } from '@/app/lib/audio';
@@ -15,8 +15,8 @@ const VREEL_LEN = 28;
 const VWIN_IDX  = 22; // winning item lands at this index
 const VVP_H     = 380; // viewport height
 
-function buildReel(count: number): ReelItem[] {
-  return Array.from({ length: count }, () => randItem());
+function buildReel(count: number, caseSkins?: CaseSkin[]): ReelItem[] {
+  return Array.from({ length: count }, () => randItem(caseSkins));
 }
 
 function parseCoin(s: string): number {
@@ -69,12 +69,13 @@ export function CaseDetailPage() {
       }
     }
 
-    const newReel = buildReel(60);
+    const caseSkins = currentCase?.skins;
+    const newReel = buildReel(60, caseSkins);
     const winIdx  = 54;
     const dur     = fast ? 1.7 : 5.6;
     const spinNonce = nonce;
 
-    rollToItem(serverSeed, clientSeed, spinNonce).then(wonItem => {
+    rollToItem(serverSeed, clientSeed, spinNonce, caseSkins).then(wonItem => {
       newReel[winIdx] = wonItem;
       startSpin(newReel, wonItem);
       setLastSpinHash((wonItem as any).hash);
@@ -138,10 +139,11 @@ export function CaseDetailPage() {
       }
     }
 
+    const caseSkins = currentCase?.skins;
     const spinNonce = nonce;
     const wonItems: ReelItem[] = await Promise.all(
       Array.from({ length: multiplier }, (_, i) =>
-        rollToItem(serverSeed, clientSeed, spinNonce + i)
+        rollToItem(serverSeed, clientSeed, spinNonce + i, caseSkins)
       )
     );
     useStore.setState(s => ({ nonce: s.nonce + multiplier }));
@@ -150,7 +152,7 @@ export function CaseDetailPage() {
     });
 
     const reels: ReelItem[][] = wonItems.map(wonItem => {
-      const r = buildReel(VREEL_LEN);
+      const r = buildReel(VREEL_LEN, caseSkins);
       r[VWIN_IDX] = wonItem;
       return r;
     });
@@ -258,8 +260,9 @@ export function CaseDetailPage() {
     };
   }, []);
 
-  const displayReel   = reel.length > 0 ? reel : buildReel(24);
-  const caseContents  = buildCaseContents();
+  const caseSkins     = currentCase?.skins;
+  const displayReel   = reel.length > 0 ? reel : buildReel(24, caseSkins);
+  const caseContents  = buildCaseContents(caseSkins);
   const multBtns      = [1, 2, 3, 4];
 
   const totalCoinsLabel = multiplier > 1
@@ -325,7 +328,7 @@ export function CaseDetailPage() {
 
           {/* N vertical reels */}
           {Array.from({ length: multiplier }, (_, colIdx) => {
-            const reelData = multiReels[colIdx] || buildReel(VREEL_LEN);
+            const reelData = multiReels[colIdx] || buildReel(VREEL_LEN, caseSkins);
             return (
               <div key={colIdx} style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
                 <div

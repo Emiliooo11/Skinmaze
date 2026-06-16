@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useStore } from '@/app/store/useStore';
-import { buildCasesAll, CASE_TABS, CaseItem } from '@/app/lib/data';
+import { buildCasesAll, CASE_TABS, CaseItem, Rarity } from '@/app/lib/data';
 import { fetchCases } from '@/app/lib/db';
 import { usdToCoins, fmtCoins } from '@/app/lib/currency';
 import { CoinIcon } from '../CoinIcon';
@@ -14,6 +14,17 @@ function dbCasesToCaseItems(dbCases: Awaited<ReturnType<typeof fetchCases>>): Ca
     name: c.name,
     price: fmtCoins(usdToCoins(c.price)),
     image: c.image_url || '/cases/case-water-camo.png',
+    skins: (c.skins ?? []).map(s => ({
+      id: s.id,
+      w: s.name,
+      skin: s.skin,
+      rar: s.rarity as Rarity,
+      color: s.color,
+      price: usdToCoins(s.price),
+      dropChance: s.drop_chance,
+      marketName: s.market_name,
+      imageUrl: s.image_url,
+    })),
   }));
 }
 
