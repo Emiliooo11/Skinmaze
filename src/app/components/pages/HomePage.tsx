@@ -40,15 +40,21 @@ const SECTION_GLOWS = [
 ];
 
 interface PlatformStats { totalPlayers: number; onlinePlayers: number; casesOpened: number; }
+type WinPeriod = 'daily' | 'weekly' | 'monthly';
+interface WinEntry { won_value: number; won_item: string; won_item_image: string | null; won_item_color: string | null; player_name: string; player_avatar: string | null; }
+interface BiggestWins { daily: WinEntry | null; weekly: WinEntry | null; monthly: WinEntry | null; }
 
 export function HomePage() {
-  const { go, login, openCase, flash, bestTab, setBestTab } = useStore();
+  const { go, login, openCase, flash, bestTab, setBestTab, logged, user } = useStore();
   const [layout, setLayout] = useState<HomeSection[]>(DEFAULT_HOME_LAYOUT);
   const [dbCaseMap, setDbCaseMap] = useState<Map<string, CaseItem>>(new Map());
   const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
+  const [biggestWins, setBiggestWins] = useState<BiggestWins | null>(null);
+  const [winPeriod, setWinPeriod] = useState<WinPeriod>('daily');
 
   useEffect(() => {
     fetch('/api/platform-stats').then(r => r.ok ? r.json() : null).then(d => { if (d) setPlatformStats(d); }).catch(() => {});
+    fetch('/api/biggest-wins').then(r => r.ok ? r.json() : null).then(d => { if (d) setBiggestWins(d); }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -91,53 +97,116 @@ export function HomePage() {
     <div>
       {/* Hero */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.45fr 1fr', gap: 20, marginBottom: 34 }}>
-        <div style={{ position: 'relative', borderRadius: 18, overflow: 'hidden',
-          background: 'linear-gradient(110deg,#0e1410 0%,#10180f 60%,#16240f 100%)',
-          border: '1px solid rgba(255,255,255,.06)', padding: '34px 36px',
-          display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 210 }}>
-          <div style={{ position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)',
-            width: 150, height: 160, borderRadius: 14,
-            backgroundImage: 'repeating-linear-gradient(135deg,rgba(120,180,120,.08) 0 9px,transparent 9px 18px)',
-            border: '1px solid rgba(255,255,255,.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#5c6b5c' }}>mascot</span>
-          </div>
-          <h1 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 30, margin: '0 0 10px' }}>Welcome to SkinMaze</h1>
-          <p style={{ margin: '0 0 22px', color: '#9aa39a', fontSize: 14, lineHeight: 1.55, maxWidth: 330 }}>
-            Your premier place for CS2 Fun!<br />Register and get deposit bonus &amp; 5 Free Cases
-          </p>
-          <button onClick={login} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a',
-            background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '13px 28px',
-            borderRadius: 11, cursor: 'pointer', width: 'fit-content', boxShadow: '0 8px 20px rgba(95,213,95,.3)' }}>
-            Login/Register
-          </button>
-        </div>
-        <div style={{ position: 'relative', borderRadius: 18, overflow: 'hidden', background: '#0e1210',
-          border: '1px solid rgba(230,195,62,.4)', padding: '26px 28px', boxShadow: '0 0 40px rgba(230,195,62,.12)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <h2 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 24, margin: '0 0 12px' }}>
-                Highest <span style={{ color: '#5fd75f' }}>Win</span>
-              </h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 20, marginBottom: 16 }}>
-                <CoinIcon size={18} />1,343.09
-              </div>
-              <div style={{ display: 'inline-flex', background: '#0a0d0a', border: '1px solid rgba(255,255,255,.08)', borderRadius: 9, padding: 3, gap: 2 }}>
-                {['Daily','Weekly','Monthly'].map((t, i) => (
-                  <span key={t} style={{ padding: '6px 14px', borderRadius: 7, background: i === 0 ? '#1c241b' : 'transparent',
-                    color: i === 0 ? '#e8ece8' : '#8a928a', fontSize: 12, fontWeight: 600 }}>{t}</span>
-                ))}
+
+        {/* Left: guest welcome OR logged-in profile */}
+        {logged && user ? (
+          <div style={{ position: 'relative', borderRadius: 18, overflow: 'hidden',
+            background: 'linear-gradient(110deg,#0c1210 0%,#0f1a0e 55%,#152210 100%)',
+            border: '1px solid rgba(95,213,95,.14)', padding: '30px 32px',
+            display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 210 }}>
+            {/* subtle grid overlay */}
+            <div style={{ position: 'absolute', inset: 0, backgroundImage: 'repeating-linear-gradient(135deg,rgba(95,213,95,.03) 0 8px,transparent 8px 16px)', pointerEvents: 'none' }} />
+            <div style={{ fontSize: 12, color: '#6b8f6b', marginBottom: 14, position: 'relative' }}>Welcome Back,</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22, position: 'relative' }}>
+              {user.avatar
+                ? <img src={user.avatar} alt="" style={{ width: 48, height: 48, borderRadius: '50%', border: '2px solid rgba(95,213,95,.4)', flexShrink: 0 }} />
+                : <span style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg,#3a5cff,#8847ff)', flexShrink: 0, display: 'inline-block' }} />}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#e6c33e"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  <span style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 22, color: '#e8ece8' }}>{user.username}</span>
+                </div>
               </div>
             </div>
-            <div style={{ width: 120, height: 130, borderRadius: 12, background: '#120c0c',
-              backgroundImage: 'repeating-linear-gradient(135deg,rgba(230,75,75,.12) 0 8px,transparent 8px 16px)',
-              border: '1px solid rgba(230,75,75,.4)', display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'flex-end', padding: 10, textAlign: 'center' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#7a5c5c', marginBottom: 'auto', marginTop: 8 }}>skin render</span>
-              <span style={{ fontSize: 10, color: '#9aa39a' }}>AWP</span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#eb4b4b' }}>Dragon Lore</span>
+            {/* XP bar */}
+            <div style={{ position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#3fd6c8"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <div style={{ flex: 1, height: 10, borderRadius: 6, background: '#0a0d0a', border: '1px solid rgba(255,255,255,.08)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: '71%', background: 'linear-gradient(90deg,#1a8a9a,#3fd6c8)', borderRadius: 6 }} />
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#8847ff"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              </div>
+              <div style={{ textAlign: 'center', fontSize: 11, color: '#6b8f6b', marginTop: 6 }}>
+                <span style={{ color: '#e8ece8', fontWeight: 600 }}>5,000 XP</span> / 7,000 XP
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div style={{ position: 'relative', borderRadius: 18, overflow: 'hidden',
+            background: 'linear-gradient(110deg,#0e1410 0%,#10180f 60%,#16240f 100%)',
+            border: '1px solid rgba(255,255,255,.06)', padding: '34px 36px',
+            display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 210 }}>
+            <div style={{ position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)',
+              width: 150, height: 160, borderRadius: 14,
+              backgroundImage: 'repeating-linear-gradient(135deg,rgba(120,180,120,.08) 0 9px,transparent 9px 18px)',
+              border: '1px solid rgba(255,255,255,.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#5c6b5c' }}>mascot</span>
+            </div>
+            <h1 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 30, margin: '0 0 10px' }}>Welcome to SkinMaze</h1>
+            <p style={{ margin: '0 0 22px', color: '#9aa39a', fontSize: 14, lineHeight: 1.55, maxWidth: 330 }}>
+              Your premier place for CS2 Fun!<br />Register and get deposit bonus &amp; 5 Free Cases
+            </p>
+            <button onClick={login} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a',
+              background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '13px 28px',
+              borderRadius: 11, cursor: 'pointer', width: 'fit-content', boxShadow: '0 8px 20px rgba(95,213,95,.3)' }}>
+              Login/Register
+            </button>
+          </div>
+        )}
+
+        {/* Right: Highest Win — live */}
+        {(() => {
+          const periodMap: Record<WinPeriod, string> = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' };
+          const win = biggestWins?.[winPeriod];
+          const itemColor = win?.won_item_color ?? '#eb4b4b';
+          return (
+            <div style={{ position: 'relative', borderRadius: 18, overflow: 'hidden', background: '#0e1210',
+              border: '1px solid rgba(230,195,62,.4)', padding: '26px 28px', boxShadow: '0 0 40px rgba(230,195,62,.12)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <h2 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 24, margin: '0 0 12px' }}>
+                    Highest <span style={{ color: '#5fd75f' }}>Win</span>
+                  </h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 20, marginBottom: 6 }}>
+                    <CoinIcon size={18} />
+                    {win ? win.won_value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+                  </div>
+                  {win?.player_name && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14, fontSize: 12, color: '#9aa39a' }}>
+                      {win.player_avatar
+                        ? <img src={win.player_avatar} alt="" style={{ width: 18, height: 18, borderRadius: '50%' }} />
+                        : <span style={{ width: 18, height: 18, borderRadius: '50%', background: 'linear-gradient(135deg,#3a5cff,#8847ff)', display: 'inline-block', flexShrink: 0 }} />}
+                      {win.player_name}
+                    </div>
+                  )}
+                  {!win?.player_name && <div style={{ marginBottom: 14 }} />}
+                  <div style={{ display: 'inline-flex', background: '#0a0d0a', border: '1px solid rgba(255,255,255,.08)', borderRadius: 9, padding: 3, gap: 2 }}>
+                    {(['daily','weekly','monthly'] as WinPeriod[]).map(p => (
+                      <span key={p} onClick={() => setWinPeriod(p)}
+                        style={{ padding: '6px 14px', borderRadius: 7, cursor: 'pointer',
+                          background: winPeriod === p ? '#1c241b' : 'transparent',
+                          color: winPeriod === p ? '#e8ece8' : '#8a928a', fontSize: 12, fontWeight: 600 }}>
+                        {periodMap[p]}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ width: 120, height: 130, borderRadius: 12, background: '#120c0c',
+                  backgroundImage: 'repeating-linear-gradient(135deg,rgba(230,75,75,.12) 0 8px,transparent 8px 16px)',
+                  border: `1px solid ${itemColor}66`, display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'flex-end', padding: 10, textAlign: 'center', overflow: 'hidden' }}>
+                  {win?.won_item_image
+                    ? <img src={win.won_item_image} alt="" style={{ width: 90, height: 70, objectFit: 'contain', marginBottom: 'auto', marginTop: 6 }} />
+                    : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#7a5c5c', marginBottom: 'auto', marginTop: 8 }}>—</span>}
+                  <span style={{ fontSize: 11, fontWeight: 600, color: itemColor, lineHeight: 1.3 }}>
+                    {win?.won_item ?? 'No data yet'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Section 1 */}
