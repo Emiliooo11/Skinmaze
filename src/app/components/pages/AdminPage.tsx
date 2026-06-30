@@ -16,10 +16,10 @@ export interface HomeSection {
 export const HOME_LAYOUT_KEY = 'sm_home_layout';
 
 export const DEFAULT_HOME_LAYOUT: HomeSection[] = [
-  { id: 'section1', title: 'Knives Collection',      icon: '🔪', caseIds: [] },
-  { id: 'section2', title: 'Gloves Collection',      icon: '🧤', caseIds: [] },
-  { id: 'section3', title: 'Ruby Knifes Collection', icon: '🍁', caseIds: [] },
-  { id: 'section4', title: 'Best Sellers',           icon: '⭐', caseIds: [] },
+  { id: 'section1', title: 'Knives Collection',      icon: '🔪',            caseIds: [] },
+  { id: 'section2', title: 'Gloves Collection',      icon: '/icon-gloves.png', caseIds: [] },
+  { id: 'section3', title: 'Ruby Knifes Collection', icon: '🍁',            caseIds: [] },
+  { id: 'section4', title: 'Best Sellers',           icon: '/icon-medal.png',  caseIds: [] },
 ];
 
 function loadHomeLayout(): HomeSection[] {

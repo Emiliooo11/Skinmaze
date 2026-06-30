@@ -211,13 +211,17 @@ export function HomePage() {
 
       {/* Section 1 */}
       {section1Cases.length > 0 && (
-        <div style={{ border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: '18px 20px 22px',
+        <div style={{ border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: '0 20px 22px',
           marginBottom: 22, background: '#0b0e0a', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-            width: 340, height: 80, background: `radial-gradient(ellipse at center,${SECTION_GLOWS[0]},transparent 70%)`, opacity: .5 }} />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 18, position: 'relative' }}>
-            <span style={{ fontSize: 18 }}>{s1?.icon}</span>
-            <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 19, margin: 0 }}>{s1?.title}</h3>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '14px 0 14px', marginBottom: 18, overflow: 'hidden' }}>
+            <img src="/bg-dots.png" alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.18, pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+              width: 340, height: '100%', background: `radial-gradient(ellipse at center,${SECTION_GLOWS[0]},transparent 70%)`, opacity: .5 }} />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10, width: '100%', justifyContent: 'center' }}>
+              {s1?.icon && s1.icon.startsWith('/') ? <img src={s1.icon} alt="" style={{ width: 26, height: 26, objectFit: 'contain' }} /> : <span style={{ fontSize: 18 }}>{s1?.icon}</span>}
+              <h3 style={{ fontWeight: 700, fontSize: 19, margin: 0 }}>{s1?.title}</h3>
+            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14 }}>
             {section1Cases.map(c => <CaseCard key={c.id} name={c.name} price={c.price} onOpen={() => openCase(c)} />)}
@@ -227,13 +231,17 @@ export function HomePage() {
 
       {/* Section 2 */}
       {section2Cases.length > 0 && (
-        <div style={{ border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: '18px 20px 22px',
+        <div style={{ border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: '0 20px 22px',
           marginBottom: 22, background: '#0b0e0a', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-            width: 340, height: 80, background: `radial-gradient(ellipse at center,${SECTION_GLOWS[1]},transparent 70%)`, opacity: .5 }} />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 18, position: 'relative' }}>
-            <span style={{ fontSize: 18 }}>{s2?.icon}</span>
-            <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 19, margin: 0 }}>{s2?.title}</h3>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '14px 0 14px', marginBottom: 18, overflow: 'hidden' }}>
+            <img src="/bg-dots.png" alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.18, pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+              width: 340, height: '100%', background: `radial-gradient(ellipse at center,${SECTION_GLOWS[1]},transparent 70%)`, opacity: .5 }} />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10, width: '100%', justifyContent: 'center' }}>
+              {s2?.icon && s2.icon.startsWith('/') ? <img src={s2.icon} alt="" style={{ width: 26, height: 26, objectFit: 'contain' }} /> : <span style={{ fontSize: 18 }}>{s2?.icon}</span>}
+              <h3 style={{ fontWeight: 700, fontSize: 19, margin: 0 }}>{s2?.title}</h3>
+            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14 }}>
             {section2Cases.map(c => <CaseCard key={c.id} name={c.name} price={c.price} onOpen={() => openCase(c)} />)}
@@ -243,13 +251,17 @@ export function HomePage() {
 
       {/* Section 3 */}
       {section3Cases.length > 0 && (
-        <div style={{ border: '1px solid rgba(230,75,75,.18)', borderRadius: 16, padding: '18px 20px 22px', marginBottom: 30,
+        <div style={{ border: '1px solid rgba(230,75,75,.18)', borderRadius: 16, padding: '0 20px 22px', marginBottom: 30,
           background: '#0c0909', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-            width: 340, height: 80, background: `radial-gradient(ellipse at center,${SECTION_GLOWS[2]},transparent 70%)`, opacity: .6 }} />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 18, position: 'relative' }}>
-            <span style={{ fontSize: 18 }}>{s3?.icon}</span>
-            <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 19, margin: 0 }}>{s3?.title}</h3>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '14px 0 14px', marginBottom: 18, overflow: 'hidden' }}>
+            <img src="/bg-dots.png" alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.18, pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+              width: 340, height: '100%', background: `radial-gradient(ellipse at center,${SECTION_GLOWS[2]},transparent 70%)`, opacity: .6 }} />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10, width: '100%', justifyContent: 'center' }}>
+              {s3?.icon && s3.icon.startsWith('/') ? <img src={s3.icon} alt="" style={{ width: 26, height: 26, objectFit: 'contain' }} /> : <span style={{ fontSize: 18 }}>{s3?.icon}</span>}
+              <h3 style={{ fontWeight: 700, fontSize: 19, margin: 0 }}>{s3?.title}</h3>
+            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14 }}>
             {section3Cases.map(c => <CaseCard key={c.id} name={c.name} price={c.price} onOpen={() => openCase(c)} />)}
