@@ -134,22 +134,24 @@ export function HomePage() {
           </div>
         ) : (
           <div style={{ position: 'relative', borderRadius: 18, overflow: 'hidden',
-            background: 'linear-gradient(110deg,#0e1410 0%,#10180f 60%,#16240f 100%)',
-            border: '1px solid rgba(255,255,255,.06)', padding: '34px 36px',
+            border: '1px solid rgba(255,255,255,.08)', padding: '34px 36px',
             display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 210 }}>
-            <div style={{ position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)',
-              width: 150, height: 160, borderRadius: 14,
-              backgroundImage: 'repeating-linear-gradient(135deg,rgba(120,180,120,.08) 0 9px,transparent 9px 18px)',
-              border: '1px solid rgba(255,255,255,.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#5c6b5c' }}>mascot</span>
-            </div>
-            <h1 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 30, margin: '0 0 10px' }}>Welcome to SkinMaze</h1>
-            <p style={{ margin: '0 0 22px', color: '#9aa39a', fontSize: 14, lineHeight: 1.55, maxWidth: 330 }}>
+            {/* Map background */}
+            <img src="/hero-bg.png" alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%',
+              objectFit: 'cover', pointerEvents: 'none' }} />
+            {/* Dark overlay so text stays readable */}
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,rgba(8,12,8,.92) 40%,rgba(8,12,8,.4) 100%)', pointerEvents: 'none' }} />
+            {/* Mascot */}
+            <img src="/mascot.png" alt="SkinMaze mascot" style={{ position: 'absolute', right: 0, bottom: 0,
+              height: '115%', width: 'auto', objectFit: 'contain', pointerEvents: 'none' }} />
+            {/* Text content */}
+            <h1 style={{ fontWeight: 700, fontSize: 30, margin: '0 0 10px', position: 'relative' }}>Welcome to SkinMaze</h1>
+            <p style={{ margin: '0 0 22px', color: '#9aa39a', fontSize: 14, lineHeight: 1.55, maxWidth: 300, position: 'relative' }}>
               Your premier place for CS2 Fun!<br />Register and get deposit bonus &amp; 5 Free Cases
             </p>
-            <button onClick={login} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a',
+            <button onClick={login} style={{ fontWeight: 700, fontSize: 14, color: '#06270a',
               background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '13px 28px',
-              borderRadius: 11, cursor: 'pointer', width: 'fit-content', boxShadow: '0 8px 20px rgba(95,213,95,.3)' }}>
+              borderRadius: 11, cursor: 'pointer', width: 'fit-content', boxShadow: '0 8px 20px rgba(95,213,95,.3)', position: 'relative' }}>
               Login/Register
             </button>
           </div>
