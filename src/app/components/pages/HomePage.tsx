@@ -313,35 +313,36 @@ export function HomePage() {
 
       {/* Support cards */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginBottom: 22 }}>
+        {/* Grassroots — Kleverr */}
         <div style={{ border: '1px solid rgba(95,213,95,.2)', borderRadius: 16, padding: 24,
-          background: 'linear-gradient(120deg,#0c130b,#0e1a0d)', position: 'relative', overflow: 'hidden' }}>
+          background: 'linear-gradient(120deg,#0c130b,#0e1a0d)', position: 'relative', overflow: 'hidden', minHeight: 160 }}>
           <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>Grassroots Support</h3>
           <div style={{ fontSize: 13, color: '#cfd4cf', marginBottom: 8 }}>&ldquo;KLEVERR&rdquo; Latvian League</div>
-          <p style={{ fontSize: 13, color: '#9aa39a', margin: '0 0 18px', maxWidth: 230 }}>We&apos;ve been proud supporter of biggest esports league in Latvia</p>
+          <p style={{ fontSize: 13, color: '#9aa39a', margin: '0 0 18px', maxWidth: 220 }}>We&apos;ve been proud supporter of the biggest esports league in Latvia</p>
           <button onClick={() => go('cases')} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 13,
             color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none',
             padding: '10px 20px', borderRadius: 10, cursor: 'pointer' }}>Open Cases</button>
-          <div style={{ position: 'absolute', right: 18, top: '50%', transform: 'translateY(-50%)',
-            width: 120, height: 120, borderRadius: 14,
-            backgroundImage: 'repeating-linear-gradient(135deg,rgba(120,200,120,.10) 0 8px,transparent 8px 16px)',
-            border: '1px solid rgba(95,213,95,.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#5c6b5c' }}>logo</span>
-          </div>
+          {/* Kleverr logo */}
+          <img src="/kleverr-logo.png" alt="Kleverr Virsliga"
+            style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)',
+              height: 120, width: 'auto', objectFit: 'contain', pointerEvents: 'none' }} />
         </div>
+        {/* Team support — EC Banga */}
         <div style={{ border: '1px solid rgba(230,120,60,.25)', borderRadius: 16, padding: 24,
-          background: 'linear-gradient(120deg,#140d09,#1a100b)', position: 'relative', overflow: 'hidden' }}>
+          background: 'linear-gradient(120deg,#140d09,#1a100b)', position: 'relative', overflow: 'hidden', minHeight: 160 }}>
           <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>Team Support</h3>
           <div style={{ fontSize: 13, color: '#cfd4cf', marginBottom: 8 }}>EC BANGA</div>
-          <p style={{ fontSize: 13, color: '#9aa39a', margin: '0 0 18px', maxWidth: 230 }}>We&apos;ve been proud supporter of biggest esports league in Latvia</p>
+          <p style={{ fontSize: 13, color: '#9aa39a', margin: '0 0 18px', maxWidth: 220 }}>We&apos;ve been proud supporter of the Griezes / EC Banga esports team</p>
           <button onClick={() => go('cases')} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 13,
             color: '#fff', background: 'linear-gradient(160deg,#e8843e,#cc5a22)', border: 'none',
             padding: '10px 20px', borderRadius: 10, cursor: 'pointer' }}>Open Cases</button>
-          <div style={{ position: 'absolute', right: 18, top: '50%', transform: 'translateY(-50%)',
-            width: 150, height: 120, borderRadius: 14,
-            backgroundImage: 'repeating-linear-gradient(135deg,rgba(230,140,80,.10) 0 8px,transparent 8px 16px)',
-            border: '1px solid rgba(230,120,60,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#7a5c4c' }}>team photo</span>
-          </div>
+          {/* Two player photos */}
+          <img src="/player-danss.png" alt="Danss"
+            style={{ position: 'absolute', right: 80, bottom: 0,
+              height: 148, width: 'auto', objectFit: 'contain', pointerEvents: 'none' }} />
+          <img src="/player-labreenc.png" alt="Labreenc"
+            style={{ position: 'absolute', right: 0, bottom: 0,
+              height: 148, width: 'auto', objectFit: 'contain', pointerEvents: 'none' }} />
         </div>
       </div>
 
