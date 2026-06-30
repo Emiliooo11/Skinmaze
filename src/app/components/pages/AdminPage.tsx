@@ -3,6 +3,8 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { CASE_IMAGES, RAR, Rarity } from '@/app/lib/data';
 import { usdToCoins, fmtCoins } from '@/app/lib/currency';
 import { fetchCases, upsertCase, deleteCase as dbDeleteCase, fetchHomeLayout, saveHomeLayout as dbSaveHomeLayout, fetchImageCollections, saveImageCollections, deleteImageCollection, DbCase, fetchDashboardStats, DashboardStats, fetchPlayers, DbPlayer, upsertPlayer, deletePlayer, fetchAffiliates, DbAffiliate, upsertAffiliate, deleteAffiliate, fetchReferralCodes, DbReferralCode, createReferralCode, deleteReferralCode, fetchAllReferralUses, fetchWagers, DbWager } from '@/app/lib/db';
+import { SkinImage } from '../SkinImage';
+import { CoinIcon } from '../CoinIcon';
 
 // == Home layout config ==
 
@@ -46,8 +48,6 @@ interface SteamSkin {
   color: string; rarityName: string; price: number; priceDisplay: string;
   imageUrl: string; isStatTrak: boolean; listings: number;
 }
-import { SkinImage } from '../SkinImage';
-import { CoinIcon } from '../CoinIcon';
 
 const DEFAULT_HOUSE_EDGE = 9;
 
@@ -158,7 +158,8 @@ export function AdminPage() {
         setCollections(dbCols.length ? dbCols : loadCollections());
         setHomeLayout(dbLayout.length ? dbLayout.map(s => ({ id: s.id, title: s.title, icon: s.icon, caseIds: s.case_ids })) : DEFAULT_HOME_LAYOUT);
         setStats(dbStats); setPlayers(dbPlayers); setAffiliates(dbAffiliates); setWagers(dbWagers); setLoading(false);
-      });
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   async function updateCollections(cols: ImageCollection[]) {
@@ -282,6 +283,127 @@ function StatCard({ label, value, sub, accent }: { label: string; value: string|
   );
 }
 
+// == Case Price Health ==
+interface HealthRow {
+  id: string; name: string; storedPrice: number; storedHouseEdge: number;
+  currentEv: number; suggestedPrice: number; currentHouseEdge: number;
+  drift: number; status: 'ok' | 'warning' | 'critical'; skinsChecked: number; skinsFailed: number;
+}
+
+function CasePriceHealth() {
+  const [rows, setRows] = useState<HealthRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [checkedAt, setCheckedAt] = useState<string | null>(null);
+  const [repricing, setRepricing] = useState<string | null>(null);
+
+  async function runCheck() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/case-price-health');
+      const json = await res.json();
+      setRows(json.results ?? []);
+      setCheckedAt(json.checkedAt ?? null);
+    } catch { /* ignore */ }
+    setLoading(false);
+  }
+
+  async function reprice(row: HealthRow) {
+    setRepricing(row.id);
+    try {
+      await fetch('/api/case-reprice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: row.id, price: row.suggestedPrice }),
+      });
+      setRows(prev => prev.map(r => r.id === row.id
+        ? { ...r, storedPrice: row.suggestedPrice, currentHouseEdge: row.storedHouseEdge, drift: 0, status: 'ok' }
+        : r));
+    } catch { /* ignore */ }
+    setRepricing(null);
+  }
+
+  const critical = rows.filter(r => r.status === 'critical').length;
+  const warning  = rows.filter(r => r.status === 'warning').length;
+
+  return (
+    <div style={{ ...cardStyle, padding: 24, marginTop: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+        <div>
+          <h3 style={{ fontFamily: 'var(--font-funnel)', fontWeight: 700, fontSize: 15, margin: '0 0 4px', color: C.primary }}>Case Price Health</h3>
+          {checkedAt && <div style={{ fontSize: 11, color: C.muted }}>Last checked {new Date(checkedAt).toLocaleString()}</div>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {critical > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: C.danger, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 20, padding: '3px 10px' }}>{critical} critical</span>}
+          {warning  > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: C.warning, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 20, padding: '3px 10px' }}>{warning} warning</span>}
+          <Btn onClick={runCheck} disabled={loading}>{loading ? 'Checking…' : rows.length ? 'Re-check' : 'Check Prices'}</Btn>
+        </div>
+      </div>
+
+      {!rows.length && !loading && (
+        <div style={{ textAlign: 'center', padding: '32px 0', color: C.muted, fontSize: 13 }}>
+          Click <strong>Check Prices</strong> to fetch current Steam Market prices for all active cases and detect any house-edge drift.
+        </div>
+      )}
+
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '32px 0', color: C.muted, fontSize: 13 }}>
+          Fetching live Steam prices for all skins… this may take a moment.
+        </div>
+      )}
+
+      {rows.length > 0 && !loading && (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr>{['Case','Stored Price','Current EV','House Edge','Price Drift','Status',''].map(h =>
+              <th key={h} style={{ textAlign: 'left', padding: '8px 10px', color: C.muted, fontWeight: 600,
+                fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.7, borderBottom: `1px solid ${C.border}` }}>{h}</th>
+            )}</tr>
+          </thead>
+          <tbody>
+            {rows.map(row => {
+              const statusColor = row.status === 'critical' ? C.danger : row.status === 'warning' ? C.warning : C.success;
+              const statusBg    = row.status === 'critical' ? '#fef2f2' : row.status === 'warning' ? '#fffbeb' : '#f0fdf4';
+              const statusBdr   = row.status === 'critical' ? '#fecaca' : row.status === 'warning' ? '#fde68a' : '#bbf7d0';
+              const driftColor  = row.drift > 5 ? C.danger : row.drift < -5 ? C.success : C.secondary;
+              return (
+                <tr key={row.id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                  <td style={{ padding: '10px 10px', fontWeight: 600, color: C.primary }}>{row.name}</td>
+                  <td style={{ padding: '10px 10px', color: C.secondary }}>${row.storedPrice.toFixed(2)}</td>
+                  <td style={{ padding: '10px 10px', color: C.secondary }}>${row.currentEv.toFixed(2)}{row.skinsFailed > 0 && <span style={{ fontSize: 10, color: C.muted, marginLeft: 4 }}>({row.skinsFailed} failed)</span>}</td>
+                  <td style={{ padding: '10px 10px' }}>
+                    <span style={{ fontWeight: 700, color: row.currentHouseEdge < 0 ? C.danger : row.currentHouseEdge < 5 ? C.warning : C.success }}>
+                      {row.currentHouseEdge.toFixed(1)}%
+                    </span>
+                    <span style={{ color: C.muted, fontSize: 11, marginLeft: 4 }}>/ target {row.storedHouseEdge}%</span>
+                  </td>
+                  <td style={{ padding: '10px 10px', color: driftColor, fontWeight: 600 }}>
+                    {row.drift > 0 ? '+' : ''}{row.drift.toFixed(1)}%
+                  </td>
+                  <td style={{ padding: '10px 10px' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: statusColor, background: statusBg,
+                      border: `1px solid ${statusBdr}`, borderRadius: 20, padding: '3px 10px', textTransform: 'uppercase' }}>
+                      {row.status}
+                    </span>
+                  </td>
+                  <td style={{ padding: '10px 10px' }}>
+                    {row.status !== 'ok' && (
+                      <Btn size="sm" variant={row.status === 'critical' ? 'danger' : 'secondary'}
+                        disabled={repricing === row.id}
+                        onClick={() => reprice(row)}>
+                        {repricing === row.id ? '…' : `Reprice → $${row.suggestedPrice.toFixed(2)}`}
+                      </Btn>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 // == Dashboard ==
 function DashboardSection({ stats, cases, players, wagers }: { stats: DashboardStats|null; cases: AdminCase[]; players: DbPlayer[]; wagers: DbWager[] }) {
   const [period, setPeriod] = useState<'24h'|'7d'|'30d'>('24h');
@@ -318,9 +440,9 @@ function DashboardSection({ stats, cases, players, wagers }: { stats: DashboardS
                 <tr key={w.id} style={{ borderBottom: '1px solid #f9fafb' }}>
                   <td style={{ padding: '9px 12px', color: C.primary, fontWeight: 600 }}>{w.player_id.slice(0, 8)}</td>
                   <td style={{ padding: '9px 12px', color: C.secondary }}>{w.case_name}</td>
-                  <td style={{ padding: '9px 12px', color: C.secondary }}>${w.amount.toFixed(2)}</td>
+                  <td style={{ padding: '9px 12px', color: C.secondary }}>${(w.amount ?? 0).toFixed(2)}</td>
                   <td style={{ padding: '9px 12px', color: C.secondary, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.won_item}</td>
-                  <td style={{ padding: '9px 12px', color: w.profit >= 0 ? C.success : C.danger, fontWeight: 600 }}>{w.profit >= 0 ? '+' : ''}{w.profit.toFixed(2)}</td>
+                  <td style={{ padding: '9px 12px', color: (w.profit ?? 0) >= 0 ? C.success : C.danger, fontWeight: 600 }}>{(w.profit ?? 0) >= 0 ? '+' : ''}{(w.profit ?? 0).toFixed(2)}</td>
                   <td style={{ padding: '9px 12px', color: C.muted, fontSize: 11 }}>{new Date(w.created_at).toLocaleString()}</td>
                 </tr>
               ))}
@@ -328,6 +450,7 @@ function DashboardSection({ stats, cases, players, wagers }: { stats: DashboardS
           </table>
         )}
       </div>
+      <CasePriceHealth />
     </div>
   );
 }

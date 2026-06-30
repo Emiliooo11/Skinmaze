@@ -363,8 +363,176 @@ const RARITY_COLOR: Record<string, string> = {
   blue: '#4b69ff', purple: '#8847ff', pink: '#d32ce6', red: '#eb4b4b', gold: '#e6c33e',
 };
 
+// ── Withdrawal modal ─────────────────────────────────────────────────────────
+
+interface WithdrawCheck {
+  available: boolean;
+  listingId?: string;
+  priceUsd?: number;
+  feeUsd?: number;
+  feePct?: number;
+  totalUsd?: number;
+  stockCount?: number;
+  error?: string;
+}
+
+function WithdrawModal({ item, onClose, onSell }: {
+  item: InventoryItem;
+  onClose: () => void;
+  onSell: () => void;
+}) {
+  const [status, setStatus] = useState<'loading' | 'ready' | 'confirming' | 'done' | 'error'>('loading');
+  const [check, setCheck] = useState<WithdrawCheck | null>(null);
+  const coinValue = parseFloat(item.price.replace(/,/g, '')) || 0;
+
+  useEffect(() => {
+    fetch(`/api/csfloat-check?market_hash_name=${encodeURIComponent(item.marketName)}`)
+      .then(r => r.json())
+      .then((data: WithdrawCheck) => { setCheck(data); setStatus('ready'); })
+      .catch(() => { setCheck({ available: false, error: 'Could not reach CSFloat' }); setStatus('ready'); });
+  }, [item.marketName]);
+
+  const color = item.rar === 'gold' ? '#e6c33e' : item.rar === 'red' ? '#eb4b4b' :
+    item.rar === 'pink' ? '#d32ce6' : item.rar === 'purple' ? '#8847ff' : '#4b69ff';
+
+  function handleConfirm() {
+    setStatus('confirming');
+    // In production: call /api/csfloat-withdraw with listingId
+    // For now we simulate the request
+    setTimeout(() => setStatus('done'), 1500);
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', zIndex: 200,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: '#0d110d', border: '1px solid rgba(255,255,255,.1)', borderRadius: 20,
+        padding: 28, width: '100%', maxWidth: 420, position: 'relative' }}>
+
+        {/* Close */}
+        <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, background: 'none',
+          border: 'none', color: '#6b746b', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>×</button>
+
+        <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 18 }}>Withdraw to Steam</div>
+
+        {/* Item preview */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#0b0e0a',
+          border: `1px solid ${color}33`, borderRadius: 12, padding: '12px 16px', marginBottom: 20 }}>
+          <SkinImage marketName={item.marketName} imageUrl={item.imageUrl} size={64} glowColor={color} />
+          <div>
+            <div style={{ fontSize: 11, color: '#9aa39a' }}>{item.w}</div>
+            <div style={{ fontWeight: 700, fontSize: 14, color }}>{item.skin}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}>
+              <CoinIcon size={13} />
+              <span style={{ fontWeight: 600, fontSize: 13 }}>{item.price}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Loading */}
+        {status === 'loading' && (
+          <div style={{ textAlign: 'center', padding: '24px 0', color: '#6b746b', fontSize: 13 }}>
+            Checking CSFloat availability...
+          </div>
+        )}
+
+        {/* Available */}
+        {status === 'ready' && check?.available && (
+          <>
+            <div style={{ background: '#0b1a0b', border: '1px solid #1a4a1a', borderRadius: 12,
+              padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8 }}>
+                <span style={{ color: '#9aa39a' }}>CSFloat price</span>
+                <span style={{ color: '#e8ece8', fontWeight: 600 }}>${check.priceUsd?.toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8 }}>
+                <span style={{ color: '#9aa39a' }}>Withdrawal fee ({check.feePct}%)</span>
+                <span style={{ color: '#9aa39a' }}>${check.feeUsd?.toFixed(2)}</span>
+              </div>
+              <div style={{ borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 8,
+                display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                <span style={{ color: '#e8ece8', fontWeight: 700 }}>You pay</span>
+                <span style={{ color: '#7fe877', fontWeight: 700 }}>{check.stockCount} in stock · ${check.totalUsd?.toFixed(2)}</span>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: '#4a6a4a', marginBottom: 16, lineHeight: 1.6 }}>
+              The withdrawal fee covers sourcing and transfer costs. Your item will be sent to your linked Steam account via a CSFloat trade offer.
+            </div>
+            <button onClick={handleConfirm}
+              style={{ width: '100%', fontWeight: 700, fontSize: 14, color: '#06270a',
+                background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none',
+                padding: '13px 0', borderRadius: 11, cursor: 'pointer', marginBottom: 10 }}>
+              Confirm Withdrawal — ${check.totalUsd?.toFixed(2)}
+            </button>
+            <button onClick={() => { onSell(); onClose(); }}
+              style={{ width: '100%', fontWeight: 600, fontSize: 13, color: '#9aa39a',
+                background: 'transparent', border: '1px solid rgba(255,255,255,.08)',
+                padding: '11px 0', borderRadius: 11, cursor: 'pointer' }}>
+              Sell for {item.price} coins instead
+            </button>
+          </>
+        )}
+
+        {/* Not available */}
+        {status === 'ready' && !check?.available && (
+          <>
+            <div style={{ background: '#1a0b0b', border: '1px solid #4a1a1a', borderRadius: 12,
+              padding: '16px', marginBottom: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 22, marginBottom: 8 }}>⚠️</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#eb4b4b', marginBottom: 6 }}>
+                Not available for withdrawal right now
+              </div>
+              <div style={{ fontSize: 12, color: '#9aa39a', lineHeight: 1.6 }}>
+                CSFloat doesn't have this item in stock at the moment. You can sell it for coins now or come back later — availability changes frequently.
+              </div>
+            </div>
+            <button onClick={() => { onSell(); onClose(); }}
+              style={{ width: '100%', fontWeight: 700, fontSize: 14, color: '#06270a',
+                background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none',
+                padding: '13px 0', borderRadius: 11, cursor: 'pointer', marginBottom: 10 }}>
+              Sell for {item.price} coins
+            </button>
+            <button onClick={onClose}
+              style={{ width: '100%', fontWeight: 600, fontSize: 13, color: '#9aa39a',
+                background: 'transparent', border: '1px solid rgba(255,255,255,.08)',
+                padding: '11px 0', borderRadius: 11, cursor: 'pointer' }}>
+              Keep in inventory &amp; try later
+            </button>
+          </>
+        )}
+
+        {/* Confirming */}
+        {status === 'confirming' && (
+          <div style={{ textAlign: 'center', padding: '24px 0', color: '#9aa39a', fontSize: 13 }}>
+            Sending trade offer via CSFloat...
+          </div>
+        )}
+
+        {/* Done */}
+        {status === 'done' && (
+          <div style={{ textAlign: 'center', padding: '24px 0' }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>✅</div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: '#7fe877', marginBottom: 8 }}>
+              Trade offer sent!
+            </div>
+            <div style={{ fontSize: 12, color: '#6b746b', lineHeight: 1.6 }}>
+              Check your Steam trade offers. The item will appear in your Steam inventory once you accept.
+            </div>
+            <button onClick={onClose} style={{ marginTop: 20, fontWeight: 600, fontSize: 13,
+              color: '#9aa39a', background: 'transparent', border: '1px solid rgba(255,255,255,.08)',
+              padding: '10px 32px', borderRadius: 10, cursor: 'pointer' }}>Close</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Inventory tab ─────────────────────────────────────────────────────────────
+
 function InventoryTab() {
-  const { inventory, sellItem, withdrawItem, flash } = useStore();
+  const { inventory, sellItem, flash } = useStore();
+  const [withdrawing, setWithdrawing] = useState<InventoryItem | null>(null);
 
   if (inventory.length === 0) {
     return (
@@ -388,6 +556,13 @@ function InventoryTab() {
 
   return (
     <div>
+      {withdrawing && (
+        <WithdrawModal
+          item={withdrawing}
+          onClose={() => setWithdrawing(null)}
+          onSell={() => { const v = parseFloat(withdrawing.price.replace(/,/g, '')) || 0; sellItem(withdrawing.inventoryId, v); }}
+        />
+      )}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         background: '#0b0e0a', border: '1px solid rgba(255,255,255,.07)', borderRadius: 14,
         padding: '14px 20px', marginBottom: 18 }}>
@@ -445,7 +620,7 @@ function InventoryTab() {
                     Sell
                   </button>
                   <button
-                    onClick={() => withdrawItem(item.inventoryId)}
+                    onClick={() => setWithdrawing(item)}
                     style={{ flex: 1, fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 12,
                       color: '#9aa39a', background: '#0e120e',
                       border: '1px solid rgba(255,255,255,.1)', padding: '9px 0', borderRadius: 9, cursor: 'pointer',

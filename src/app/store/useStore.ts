@@ -10,10 +10,16 @@ let _navigate: (path: string) => void = (path) => {
 };
 export function registerNavigate(fn: (path: string) => void) { _navigate = fn; }
 
-function routeToPath(r: Route): string {
-  if (r === 'home') return '/';
-  if (r === 'casedetail') return '/cases';
-  return '/' + r;
+function getLangPrefix(): string {
+  if (typeof window === 'undefined') return '';
+  const m = window.location.pathname.match(/^\/(lv|lt|et)(\/|$)/);
+  return m ? `/${m[1]}` : '';
+}
+
+function routeToPath(r: Route, prefix: string): string {
+  if (r === 'home') return prefix + '/';
+  if (r === 'casedetail') return prefix + '/cases';
+  return prefix + '/' + r;
 }
 
 export interface SpinRecord {
@@ -157,8 +163,24 @@ function makeFairInit() {
 const _fi = makeFairInit();
 
 export const useStore = create<Store>((set, get) => ({
-  lang: (typeof window !== 'undefined' ? (localStorage.getItem('sm_lang') as Lang) : null) ?? 'en',
-  setLang: (l) => { set({ lang: l }); if (typeof window !== 'undefined') localStorage.setItem('sm_lang', l); },
+  lang: (() => {
+    if (typeof window !== 'undefined') {
+      const m = window.location.pathname.match(/^\/(lv|lt|et)(\/|$)/);
+      if (m) return m[1] as Lang;
+      return (localStorage.getItem('sm_lang') as Lang) ?? 'en';
+    }
+    return 'en';
+  })(),
+  setLang: (l) => {
+    set({ lang: l });
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sm_lang', l);
+      const cur = window.location.pathname;
+      const stripped = cur.replace(/^\/(lv|lt|et)(\/|$)/, '/') || '/';
+      const next = l === 'en' ? stripped : `/${l}${stripped === '/' ? '' : stripped}`;
+      if (cur !== next) window.location.href = next;
+    }
+  },
   route: 'home',
   user: null,
   logged: false,
@@ -194,7 +216,7 @@ export const useStore = create<Store>((set, get) => ({
   loginOpen: false,
 
   setRoute: (r) => set({ route: r }),
-  go: (r) => { set({ route: r, mpItem: null }); _navigate(routeToPath(r)); try { window.scrollTo(0, 0); } catch {}; },
+  go: (r) => { const p = getLangPrefix(); set({ route: r, mpItem: null }); _navigate(routeToPath(r, p)); try { window.scrollTo(0, 0); } catch {}; },
   loadCase: (c) => { set({ currentCase: c, phase: 'idle', won: null, reel: [] }); },
   flash: (msg) => {
     const prev = get()._toastTimer;
@@ -204,7 +226,7 @@ export const useStore = create<Store>((set, get) => ({
   },
   openLogin: () => set({ loginOpen: true }),
   closeLogin: () => set({ loginOpen: false }),
-  login: () => { set({ logged: true, loginOpen: false }); _navigate('/cases'); },
+  login: () => { set({ logged: true, loginOpen: false }); _navigate(getLangPrefix() + '/cases'); },
   setUser: (u) => set({ user: u, logged: true }),
   checkSession: async () => {
     try {
@@ -216,11 +238,11 @@ export const useStore = create<Store>((set, get) => ({
   logout: () => {
     fetch('/api/auth/logout', { method: 'POST' });
     set({ logged: false, user: null });
-    _navigate('/');
+    _navigate(getLangPrefix() + '/');
   },
   openCase: (c) => {
     set({ currentCase: c, phase: 'idle', won: null, reel: [] });
-    _navigate('/cases/' + c.id);
+    _navigate(getLangPrefix() + '/cases/' + c.id);
     try { window.scrollTo(0, 0); } catch {}
   },
   startSpin: (reel, won) => set({ phase: 'spin', won, reel }),
@@ -229,8 +251,8 @@ export const useStore = create<Store>((set, get) => ({
   openAgain: () => { set({ phase: 'idle' }); },
   setPhase: (p) => set({ phase: p }),
   setMultiplier: (n) => set({ multiplier: n }),
-  goProfile: (tab) => { set({ profileTab: tab || 'settings' }); _navigate('/profile'); try { window.scrollTo(0, 0); } catch {}; },
-  goWallet: () => { set({ walletView: 'methods', walletTab: 'deposit' }); _navigate('/wallet'); try { window.scrollTo(0, 0); } catch {}; },
+  goProfile: (tab) => { const p = getLangPrefix(); set({ profileTab: tab || 'settings' }); _navigate(p + '/profile'); try { window.scrollTo(0, 0); } catch {}; },
+  goWallet: () => { const p = getLangPrefix(); set({ walletView: 'methods', walletTab: 'deposit' }); _navigate(p + '/wallet'); try { window.scrollTo(0, 0); } catch {}; },
   openMpItem: (it) => set({ mpItem: it }),
   closeMpItem: () => set({ mpItem: null }),
   setMpType: (t) => set(s => ({ mp: { ...s.mp, type: s.mp.type === t ? null : t } })),
