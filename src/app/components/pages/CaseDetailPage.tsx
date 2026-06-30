@@ -422,15 +422,20 @@ export function CaseDetailPage() {
       <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 16, marginBottom: 16 }}>🧰 {t('case_contains', lang)}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 14 }}>
         {caseContents.map((d, i) => (
-          <div key={i} style={{ position: 'relative', background: '#0b0e0a', border: '1px solid rgba(255,255,255,.06)',
+          <div key={i} style={{ position: 'relative', background: '#0b0e0a', border: `1px solid ${d.color}44`,
             borderBottom: `2px solid ${d.color}`, borderRadius: 14, padding: '14px 12px 12px', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '70%', height: 34,
-              background: `radial-gradient(ellipse at center,${d.color},transparent 70%)`, opacity: .45 }} />
+            {/* Dots texture */}
+            <img src="/bg-skin-dots.png" alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.06, pointerEvents: 'none' }} />
+            {/* SM logo watermark */}
+            <img src="/bg-skin-logo.png" alt="" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: '80%', opacity: 0.12, pointerEvents: 'none' }} />
+            {/* Rarity glow at top */}
+            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '90%', height: 40,
+              background: `radial-gradient(ellipse at center,${d.color},transparent 70%)`, opacity: .4 }} />
             <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a', position: 'relative' }}>{d.chancePct}%</div>
-            <SkinImage marketName={d.marketName} imageUrl={d.imageUrl} size={90} glowColor={d.color} style={{ margin: '4px auto' }} />
-            <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a' }}>{d.w}</div>
-            <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 13, color: d.color }}>{d.skin}</div>
-            <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 5, fontSize: 13 }}>
+            <SkinImage marketName={d.marketName} imageUrl={d.imageUrl} size={90} glowColor={d.color} style={{ margin: '4px auto', position: 'relative' }} />
+            <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa39a', position: 'relative' }}>{d.w}</div>
+            <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 13, color: d.color, position: 'relative' }}>{d.skin}</div>
+            <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 5, fontSize: 13, position: 'relative' }}>
               <CoinIcon size={13} />{d.price}
             </div>
           </div>
