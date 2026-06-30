@@ -1,7 +1,9 @@
 @import "tailwindcss";
 
 * { box-sizing: border-box; }
-body { margin: 0; background: #080a08; color: #e8ece8; font-family: var(--font-outfit), sans-serif; }
+body { margin: 0; background: #080a08; color: #e8ece8; font-family: var(--font-funnel), sans-serif; }
+/* Alias old font variables so existing components pick up Funnel Display automatically */
+:root { --font-poppins: var(--font-funnel); --font-outfit: var(--font-funnel); }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: #0a0d0a; }

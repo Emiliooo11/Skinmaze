@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
-import { Poppins, Outfit, JetBrains_Mono } from "next/font/google";
+import { Funnel_Display, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const poppins = Poppins({
-  variable: "--font-poppins",
+const funnelDisplay = Funnel_Display({
+  variable: "--font-funnel",
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-});
-
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -31,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${poppins.variable} ${outfit.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`${funnelDisplay.variable} ${jetbrainsMono.variable}`}>
       <body>{children}</body>
     </html>
   );
