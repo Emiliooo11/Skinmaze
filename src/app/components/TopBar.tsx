@@ -16,7 +16,7 @@ export function TopBar() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 46 }}>
         {/* Logo */}
         <div onClick={() => go('home')} style={{ cursor: 'pointer' }}>
-          <img src="/logo.png" alt="SKIN MAZE" style={{ height: 28, width: 'auto', display: 'block' }} />
+          <img src="/logo.png" alt="SKIN MAZE" style={{ height: 32, width: 'auto', display: 'block' }} />
         </div>
 
         <nav style={{ display: 'flex', alignItems: 'center', gap: 30 }}>
