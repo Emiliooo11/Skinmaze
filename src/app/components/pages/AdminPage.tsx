@@ -712,6 +712,143 @@ function AffiliatesSection({ affiliates, onUpdate, onDelete }: { affiliates: DbA
   );
 }
 
+// == AutoGeneratePanel ==
+// Price ratios relative to blue (based on CS2 market averages)
+const RAR_PRICE_RATIO: Record<Rarity, number> = { blue: 1, purple: 4, pink: 20, red: 80, gold: 250 };
+const RAR_ORDER: Rarity[] = ['gold', 'red', 'pink', 'purple', 'blue'];
+const RAR_LABELS: Record<Rarity, string> = { gold: 'Gold', red: 'Covert', pink: 'Classified', purple: 'Restricted', blue: 'Mil-Spec' };
+
+function computeTargetPrices(evUsd: number, counts: Record<Rarity, number>): Record<Rarity, number> {
+  // EV = sum_rar( RAR_DEFAULT_CHANCE[rar]/100 * count * avg_price_per_slot )
+  // Prices proportional to RAR_PRICE_RATIO. Solve for base B.
+  let coeff = 0;
+  for (const rar of RAR_ORDER) {
+    if (counts[rar] === 0) continue;
+    coeff += (RAR_DEFAULT_CHANCE[rar] / 100) * RAR_PRICE_RATIO[rar];
+  }
+  const B = coeff > 0 ? evUsd / coeff : 0;
+  const targets: Record<Rarity, number> = { blue: 0, purple: 0, pink: 0, red: 0, gold: 0 };
+  for (const rar of RAR_ORDER) { targets[rar] = +(B * RAR_PRICE_RATIO[rar]).toFixed(2); }
+  return targets;
+}
+
+interface AutoState { open: boolean; counts: Record<Rarity, number>; generating: boolean; error: string; }
+
+function AutoGeneratePanel({ draft, houseEdge, onApply }: {
+  draft: AdminCase; houseEdge: number;
+  onApply: (skins: AdminSkin[]) => void;
+}) {
+  const [state, setState] = useState<AutoState>({
+    open: false,
+    counts: { gold: 1, red: 2, pink: 4, purple: 6, blue: 5 },
+    generating: false, error: '',
+  });
+
+  const priceUsd = parseFloat(draft.price) || 0;
+  const evUsd = priceUsd * (1 - houseEdge / 100);
+  const totalSkins = RAR_ORDER.reduce((s, r) => s + state.counts[r], 0);
+  const targets = computeTargetPrices(evUsd, state.counts);
+
+  function setCount(rar: Rarity, v: number) {
+    setState(s => ({ ...s, counts: { ...s.counts, [rar]: Math.max(0, v) } }));
+  }
+
+  async function generate() {
+    if (priceUsd <= 0) { setState(s => ({ ...s, error: 'Set a case price first.' })); return; }
+    setState(s => ({ ...s, generating: true, error: '' }));
+    try {
+      const selected: AdminSkin[] = [];
+      for (const rar of RAR_ORDER) {
+        const n = state.counts[rar];
+        if (n === 0) continue;
+        const target = targets[rar];
+        const min = +(target * 0.5).toFixed(0);
+        const max = +(target * 2).toFixed(0);
+        const qs = new URLSearchParams({ count: '48', start: '0', rarity: rar, minPrice: String(min), maxPrice: String(max) });
+        const res = await fetch(`/api/skin-search?${qs}`);
+        const json = await res.json();
+        const pool: SteamSkin[] = json.results || [];
+        // Filter out already-selected skins to avoid duplicates
+        const available = pool.filter(s => !selected.some(x => x.id === s.id));
+        // Shuffle and pick n
+        const shuffled = [...available].sort(() => Math.random() - 0.5);
+        const picked = shuffled.slice(0, n);
+        // If not enough, widen range
+        if (picked.length < n && pool.length < n) {
+          const qs2 = new URLSearchParams({ count: '48', start: '0', rarity: rar });
+          const res2 = await fetch(`/api/skin-search?${qs2}`);
+          const j2 = await res2.json();
+          const pool2: SteamSkin[] = (j2.results || []).filter((s: SteamSkin) => !selected.some(x => x.id === s.id));
+          const extra = pool2.sort(() => Math.random() - 0.5).slice(0, n - picked.length);
+          picked.push(...extra);
+        }
+        for (const s of picked) {
+          const mappedRar: Rarity = (RAR_MAP[s.rarityName] || rar) as Rarity;
+          selected.push({ id: s.id, name: s.name, skin: s.skin, marketName: s.fullName, rar: mappedRar, color: RAR[mappedRar]?.c || s.color, imageUrl: s.imageUrl, price: s.price, dropChance: RAR_DEFAULT_CHANCE[mappedRar] ?? RAR_DEFAULT_CHANCE.blue });
+        }
+      }
+      if (selected.length === 0) { setState(s => ({ ...s, generating: false, error: 'No skins found. Try adjusting the rarity counts.' })); return; }
+      // Normalize drop chances
+      const sum = selected.reduce((a, s) => a + s.dropChance, 0);
+      const normalized = selected.map(s => ({ ...s, dropChance: +(s.dropChance / sum * 100).toFixed(4) }));
+      onApply(normalized);
+      setState(s => ({ ...s, generating: false, open: false }));
+    } catch (e) {
+      setState(s => ({ ...s, generating: false, error: String(e) }));
+    }
+  }
+
+  return (
+    <div style={{ ...cardStyle, marginBottom: 14, overflow: 'hidden' }}>
+      <button onClick={() => setState(s => ({ ...s, open: !s.open }))}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-funnel)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>✨</div>
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: C.primary }}>Auto-Generate Case</div>
+            <div style={{ fontSize: 11, color: C.muted }}>Let the system pick skins based on your target price and rarity mix</div>
+          </div>
+        </div>
+        <span style={{ color: C.muted, fontSize: 18 }}>{state.open ? '▲' : '▼'}</span>
+      </button>
+
+      {state.open && (
+        <div style={{ padding: '0 18px 18px', borderTop: `1px solid ${C.border}` }}>
+          <div style={{ marginTop: 14, marginBottom: 14, padding: '10px 14px', background: '#f9fafb', borderRadius: 8, fontSize: 12, color: C.secondary }}>
+            Target EV: <strong style={{ color: C.accent }}>${evUsd.toFixed(2)} USD</strong> &nbsp;·&nbsp;
+            Case price: <strong>${priceUsd.toFixed(2)}</strong> &nbsp;·&nbsp;
+            House edge: <strong>{houseEdge}%</strong> &nbsp;·&nbsp;
+            Total skins: <strong>{totalSkins}</strong>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 14 }}>
+            {RAR_ORDER.map(rar => (
+              <div key={rar} style={{ background: '#f9fafb', border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 10px', textAlign: 'center' }}>
+                <div style={{ width: 8, height: 8, borderRadius: 2, background: RAR[rar].c, margin: '0 auto 6px' }} />
+                <div style={{ fontSize: 11, fontWeight: 600, color: C.primary, marginBottom: 6 }}>{RAR_LABELS[rar]}</div>
+                <input type="number" min={0} max={20} value={state.counts[rar]}
+                  onChange={e => setCount(rar, parseInt(e.target.value) || 0)}
+                  style={{ width: '100%', textAlign: 'center', background: '#fff', border: `1px solid ${C.border}`, borderRadius: 6, padding: '5px 4px', fontSize: 14, fontWeight: 700, outline: 'none', color: C.primary }} />
+                <div style={{ fontSize: 10, color: C.muted, marginTop: 5 }}>
+                  {state.counts[rar] > 0 ? `~$${targets[rar].toFixed(0)} ea` : 'skip'}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {state.error && <div style={{ color: C.danger, fontSize: 12, marginBottom: 10 }}>{state.error}</div>}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Btn onClick={generate} disabled={state.generating || totalSkins === 0 || priceUsd <= 0}>
+              {state.generating ? 'Generating…' : `Generate ${totalSkins} Skins`}
+            </Btn>
+            {draft.skins.length > 0 && <span style={{ fontSize: 11, color: C.muted }}>Will replace current {draft.skins.length} skin{draft.skins.length !== 1 ? 's' : ''}</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // == CaseBuilder ==
 const CAT_TABS = ['All','Rifle','Pistol','Sniper','SMG','Shotgun','Machinegun','Knifes','Gloves'] as const;
 const RAR_CHIPS = [
@@ -850,6 +987,7 @@ function CaseBuilder({ initial, collections, onSave, onBack }: { initial: AdminC
         </div>
 
         <div>
+          <AutoGeneratePanel draft={draft} houseEdge={draft.houseEdge} onApply={skins => setDraft(d => ({ ...d, skins }))} />
           <div style={{ ...cardStyle, padding: 18, marginBottom: 14 }}>
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12, color: C.primary }}>Browse Steam Market Skins</div>
             <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
