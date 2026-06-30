@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude internal
+.claude/
+
+# loose image files dumped in repo root (not in public/)
+/*.png
+/*.jpg
+/*.jpeg
+/*.gif
+/*.webp
+/svg+xml*
+Skinmaze/
