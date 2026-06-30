@@ -121,7 +121,17 @@ export const TICKER_COLORS = [
   '#9b6bff','#4b8fff','#9b6bff','#e6c33e','#eb4b4b','#eb4b4b','#9b6bff','#4b8fff','#9b6bff',
 ];
 
-export const PAY_METHODS = ['Mastercard','Skrill','VISA','Neosurf','Apple Pay','G Pay','paysafecard','NETELLER','PayPal'];
+export const PAY_METHODS = [
+  { name: 'Mastercard',   src: '/pay-mastercard.png'  },
+  { name: 'Skrill',       src: '/pay-skrill.png'      },
+  { name: 'VISA',         src: '/pay-visa.png'        },
+  { name: 'Neosurf',      src: '/pay-neosurf.png'     },
+  { name: 'Apple Pay',    src: '/pay-applepay.png'    },
+  { name: 'G Pay',        src: '/pay-gpay.png'        },
+  { name: 'paysafecard',  src: '/pay-paysafecard.png' },
+  { name: 'NETELLER',     src: '/pay-neteller.png'    },
+  { name: 'PayPal',       src: '/pay-paypal.png'      },
+];
 export const SOCIALS = ['𝕏', '✈️', '💬', '🅥'];
 export const FOOTER_COLS = [
   { title: 'SkinMaze', links: ['All Cases','Free Cases','Newest','Bestsellers','Signature Cases'] },

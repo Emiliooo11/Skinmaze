@@ -299,9 +299,11 @@ export function HomePage() {
           <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 20 }}>Make Deposit</div>
           <div style={{ color: '#9aa39a', fontSize: 13 }}>50+ Methods</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', color: '#aeb6ae', fontSize: 13, fontWeight: 600 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           {PAY_METHODS.map(p => (
-            <span key={p} style={{ background: '#11140f', border: '1px solid rgba(255,255,255,.07)', padding: '7px 13px', borderRadius: 8 }}>{p}</span>
+            <div key={p.name} style={{ background: '#11140f', border: '1px solid rgba(255,255,255,.07)', padding: '10px 16px', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img src={p.src} alt={p.name} style={{ height: 16, width: 'auto', display: 'block', filter: 'brightness(0) invert(1)', opacity: 0.75 }} />
+            </div>
           ))}
         </div>
         <button onClick={() => flash('Coming soon ✨')} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700,
