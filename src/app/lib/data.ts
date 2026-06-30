@@ -132,7 +132,12 @@ export const PAY_METHODS = [
   { name: 'NETELLER',     src: '/pay-neteller.png'    },
   { name: 'PayPal',       src: '/pay-paypal.png'      },
 ];
-export const SOCIALS = ['𝕏', '✈️', '💬', '🅥'];
+export const SOCIALS = [
+  { icon: '/social-x.png',        label: 'X'        },
+  { icon: '/social-telegram.png', label: 'Telegram' },
+  { icon: '/social-discord.png',  label: 'Discord'  },
+  { icon: '/social-vk.png',       label: 'VK'       },
+];
 export const FOOTER_COLS = [
   { title: 'SkinMaze', links: ['All Cases','Free Cases','Newest','Bestsellers','Signature Cases'] },
   { title: 'Info', links: ['Partnership','Blog','Items','Careers','FAQ','About Us','Provably Fair'] },
