@@ -4,14 +4,15 @@ import type { ProfileTab, InventoryItem } from '@/app/store/useStore';
 import { CoinIcon } from '../CoinIcon';
 import { SkinImage } from '../SkinImage';
 import { useEffect, useState } from 'react';
+import { t } from '@/app/lib/i18n';
 
-const PROFILE_TABS: Array<{ key: ProfileTab | 'logout'; label: string; icon: string }> = [
-  { key: 'inventory',    label: 'Inventory',    icon: '🎒' },
-  { key: 'settings',    label: 'Settings',     icon: '⚙️' },
-  { key: 'security',    label: 'Security',     icon: '🔒' },
-  { key: 'affiliate',   label: 'Affiliate',    icon: '💀' },
-  { key: 'transactions', label: 'Transactions', icon: '🧾' },
-  { key: 'logout',      label: 'Logout',       icon: '🚪' },
+const PROFILE_TAB_DEFS: Array<{ key: ProfileTab | 'logout'; icon: string }> = [
+  { key: 'inventory',    icon: '🎒' },
+  { key: 'settings',    icon: '⚙️' },
+  { key: 'security',    icon: '🔒' },
+  { key: 'affiliate',   icon: '💀' },
+  { key: 'transactions', icon: '🧾' },
+  { key: 'logout',      icon: '🚪' },
 ];
 
 const SELF_OPTS = ['1 Day', '2 Days', '3 Days', '7 Days', '1 Month', '1 Year'];
@@ -57,7 +58,16 @@ function fmt(n: number) {
 }
 
 export function ProfilePage() {
-  const { profileTab, setProfileTab, logout, flash, selfExcl, setSelfExcl, logged } = useStore();
+  const { profileTab, setProfileTab, logout, flash, selfExcl, setSelfExcl, logged, lang } = useStore();
+  const tabLabels: Record<string, string> = {
+    inventory: t('profile_inventory', lang),
+    settings: t('profile_settings', lang),
+    security: 'Security',
+    affiliate: 'Affiliate',
+    transactions: t('profile_transactions', lang),
+    logout: t('nav_logout', lang),
+  };
+  const PROFILE_TABS = PROFILE_TAB_DEFS.map(d => ({ ...d, label: tabLabels[d.key] ?? d.key }));
   const [stats, setStats] = useState<PlayerStats | null>(null);
 
   useEffect(() => {
@@ -119,10 +129,10 @@ export function ProfilePage() {
             {/* Live stats cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
               {[
-                { label: 'Total Win',      value: stats ? fmt(stats.totalWin)     : '—', coin: true  },
-                { label: 'Total Wagered',  value: stats ? fmt(stats.totalWagered) : '—', coin: true, green: true },
-                { label: 'Unboxed Cases',  value: stats ? String(stats.casesOpened) : '—', coin: false },
-                { label: 'Favorite Case',  value: stats?.favoriteCase ?? '—',              coin: false, gold: true },
+                { label: t('profile_total_win', lang),   value: stats ? fmt(stats.totalWin)       : '—', coin: true  },
+                { label: t('profile_wagered', lang),     value: stats ? fmt(stats.totalWagered)   : '—', coin: true, green: true },
+                { label: t('profile_opened', lang),      value: stats ? String(stats.casesOpened) : '—', coin: false },
+                { label: t('profile_fav_case', lang),    value: stats?.favoriteCase ?? t('profile_none', lang), coin: false, gold: true },
               ].map(({ label, value, coin, green, gold }) => (
                 <div key={label} style={{ background: green ? 'linear-gradient(120deg,#0c130b,#0e1a0d)' : '#0c100c',
                   border: green ? '1px solid rgba(95,213,95,.18)' : gold ? '1px solid rgba(230,150,60,.25)' : '1px solid rgba(255,255,255,.06)',

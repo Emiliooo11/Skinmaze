@@ -7,6 +7,7 @@ import { rollToItem } from '@/app/lib/provablyFair';
 import { playSpinSound, playRevealSound } from '@/app/lib/audio';
 import { CoinIcon } from '../CoinIcon';
 import { SkinImage } from '../SkinImage';
+import { t } from '@/app/lib/i18n';
 
 const VITEM_H   = 140; // px per item in vertical reel
 const VITEM_GAP = 12;
@@ -28,7 +29,7 @@ export function CaseDetailPage() {
     currentCase, phase, won, reel, multiplier, setMultiplier, go, flash,
     startSpin, finishSpin, closeOpen, keepItem, sellItem, adjustBalance,
     serverSeed, clientSeed, nonce, recordSpin, setLastSpinHash,
-    openFairness, user, logged, openLogin,
+    openFairness, user, logged, openLogin, lang,
   } = useStore();
 
   // ── Single-case refs ──────────────────────────────────────────────────────
@@ -382,7 +383,7 @@ export function CaseDetailPage() {
             <button onClick={openLogin} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 15,
               color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none',
               padding: '14px 40px', borderRadius: 11, cursor: 'pointer',
-              boxShadow: '0 8px 20px rgba(95,213,95,.3)' }}>Login to Open</button>
+              boxShadow: '0 8px 20px rgba(95,213,95,.3)' }}>{t('login_to_open', lang)}</button>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -418,7 +419,7 @@ export function CaseDetailPage() {
       </div>
 
       {/* Case Contains — sorted rarest first */}
-      <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 16, marginBottom: 16 }}>🧰 Case Contains</div>
+      <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 16, marginBottom: 16 }}>🧰 {t('case_contains', lang)}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 14 }}>
         {caseContents.map((d, i) => (
           <div key={i} style={{ position: 'relative', background: '#0b0e0a', border: '1px solid rgba(255,255,255,.06)',
@@ -470,12 +471,12 @@ export function CaseDetailPage() {
               <div style={{ display: 'flex', gap: 12, marginTop: 22 }}>
                 <button onClick={() => { closeOpen(); if (won) { const v = parseCoin(won.price); sellItem('__instant__', v); } }}
                   style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '12px 24px', borderRadius: 11, cursor: 'pointer' }}>
-                  Sell for {won.price}
+                  {t('case_sell', lang)} {won.price}
                 </button>
-                <button onClick={handleOpenAgain} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#cfd4cf', background: '#10140f', border: '1px solid rgba(255,255,255,.12)', padding: '12px 24px', borderRadius: 11, cursor: 'pointer' }}>Open Again</button>
+                <button onClick={handleOpenAgain} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#cfd4cf', background: '#10140f', border: '1px solid rgba(255,255,255,.12)', padding: '12px 24px', borderRadius: 11, cursor: 'pointer' }}>{t('case_spin', lang)}</button>
                 <button onClick={() => { if (won) keepItem(won, cc.name); closeOpen(); }}
                   style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 14, color: '#7fe877', background: 'rgba(95,213,95,.1)', border: '1px solid rgba(95,213,95,.3)', padding: '12px 24px', borderRadius: 11, cursor: 'pointer' }}>
-                  Keep
+                  {t('case_keep', lang)}
                 </button>
               </div>
             </div>
@@ -519,11 +520,11 @@ export function CaseDetailPage() {
                   <button onClick={() => setMultiDecisions(multiWon.map(() => 'keep'))}
                     style={{ fontFamily: 'var(--font-outfit)', fontSize: 12, fontWeight: 600, color: '#7fe877',
                       background: 'rgba(95,213,95,.08)', border: '1px solid rgba(95,213,95,.25)',
-                      padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}>Keep All</button>
+                      padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}>{t('case_keep_all', lang)}</button>
                   <button onClick={() => setMultiDecisions(multiWon.map(() => 'sell'))}
                     style={{ fontFamily: 'var(--font-outfit)', fontSize: 12, fontWeight: 600, color: '#74e36b',
                       background: 'rgba(70,192,65,.08)', border: '1px solid rgba(70,192,65,.25)',
-                      padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}>Sell All</button>
+                      padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}>{t('case_sell_all', lang)}</button>
                   <button onClick={handleMultiClose}
                     style={{ width: 38, height: 38, borderRadius: 10, background: '#11140f', border: '1px solid rgba(255,255,255,.1)', color: '#cfd4cf', fontSize: 18, cursor: 'pointer' }}>✕</button>
                 </div>

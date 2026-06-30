@@ -2,10 +2,11 @@
 import { usePathname } from 'next/navigation';
 import { useStore } from '@/app/store/useStore';
 import { CoinIcon } from './CoinIcon';
+import { t } from '@/app/lib/i18n';
 
 export function TopBar() {
   const pathname = usePathname();
-  const { go, openLogin, goProfile, goWallet, logged, flash, user, logout } = useStore();
+  const { go, openLogin, goProfile, goWallet, logged, flash, user, logout, lang } = useStore();
 
   const onCases  = pathname === '/cases' || pathname.startsWith('/cases/');
   const onMarket = pathname === '/market';
@@ -14,7 +15,6 @@ export function TopBar() {
     <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '16px 34px', position: 'relative', zIndex: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 46 }}>
-        {/* Logo */}
         <div onClick={() => go('home')} style={{ cursor: 'pointer' }}>
           <img src="/logo.png" alt="SKIN MAZE" style={{ height: 32, width: 'auto', display: 'block' }} />
         </div>
@@ -22,29 +22,32 @@ export function TopBar() {
         <nav style={{ display: 'flex', alignItems: 'center', gap: 30 }}>
           <div onClick={() => go('cases')} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
             fontWeight: 500, fontSize: 15, color: onCases ? '#7fe877' : '#cfd4cf', transition: 'color .15s' }}>
-            <img src="/nav-cases.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain', opacity: onCases ? 1 : 0.6 }} /> Cases
+            <img src="/nav-cases.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain', opacity: onCases ? 1 : 0.6 }} />
+            {t('nav_cases', lang)}
           </div>
           <div onClick={() => flash('Coming soon ✨')} style={{ display: 'flex', alignItems: 'center', gap: 8,
             cursor: 'pointer', fontWeight: 500, fontSize: 15, color: '#9aa39a' }}>
-            <img src="/nav-leaderboard.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain', opacity: 0.6 }} /> Leaderboard
+            <img src="/nav-leaderboard.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain', opacity: 0.6 }} />
+            {t('nav_leaderboard', lang)}
           </div>
           <div onClick={() => go('market')} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
             fontWeight: 500, fontSize: 15, color: onMarket ? '#7fe877' : '#9aa39a' }}>
-            <img src="/nav-market.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain', opacity: onMarket ? 1 : 0.6 }} /> Market
+            <img src="/nav-market.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain', opacity: onMarket ? 1 : 0.6 }} />
+            {t('nav_market', lang)}
           </div>
         </nav>
       </div>
 
-      {/* Guest buttons */}
       {!logged && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <button onClick={openLogin} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 14, color: '#06270a',
+          <button onClick={openLogin} style={{ fontWeight: 700, fontSize: 14, color: '#06270a',
             background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '12px 24px',
-            borderRadius: 11, cursor: 'pointer', boxShadow: '0 6px 18px rgba(95,213,95,.3)' }}>Login/Register</button>
+            borderRadius: 11, cursor: 'pointer', boxShadow: '0 6px 18px rgba(95,213,95,.3)' }}>
+            {t('nav_login', lang)}
+          </button>
         </div>
       )}
 
-      {/* Logged-in user bar */}
       {logged && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div onClick={goWallet} title="Wallet" style={{ display: 'flex', alignItems: 'center', gap: 9,
@@ -69,15 +72,13 @@ export function TopBar() {
               ? <img src={user.avatar} alt="" style={{ width: 30, height: 30, borderRadius: 8, objectFit: 'cover' }} />
               : <span style={{ width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg,#3a5cff,#8847ff)', display: 'inline-block' }} />
             }
-            <span style={{ fontWeight: 500, fontSize: 14, color: '#5fd75f' }}>
-              {user?.username ?? 'Player'}
-            </span>
+            <span style={{ fontWeight: 500, fontSize: 14, color: '#5fd75f' }}>{user?.username ?? 'Player'}</span>
             <span style={{ color: '#6b746b', fontSize: 11 }}>▾</span>
           </div>
           <button onClick={logout} style={{ width: 36, height: 36, borderRadius: 9,
             background: '#10140f', border: '1px solid rgba(255,255,255,.08)', cursor: 'pointer',
             color: '#9aa39a', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            title="Log out">⏻</button>
+            title={t('nav_logout', lang)}>⏻</button>
         </div>
       )}
     </header>

@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { CaseItem, SkinItem, ReelItem } from '@/app/lib/data';
 import { generateSeed, sha256 } from '@/app/lib/provablyFair';
+import { Lang } from '@/app/lib/i18n';
 
 // Module-level navigate function — registered by NavigationProvider on mount
 let _navigate: (path: string) => void = (path) => {
@@ -55,6 +56,8 @@ export interface UserInfo {
 }
 
 interface Store {
+  lang: Lang;
+  setLang: (l: Lang) => void;
   route: Route;
   logged: boolean;
   user: UserInfo | null;
@@ -154,6 +157,8 @@ function makeFairInit() {
 const _fi = makeFairInit();
 
 export const useStore = create<Store>((set, get) => ({
+  lang: (typeof window !== 'undefined' ? (localStorage.getItem('sm_lang') as Lang) : null) ?? 'en',
+  setLang: (l) => { set({ lang: l }); if (typeof window !== 'undefined') localStorage.setItem('sm_lang', l); },
   route: 'home',
   user: null,
   logged: false,

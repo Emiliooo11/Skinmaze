@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useStore } from '@/app/store/useStore';
 import { CaseItem, PAY_METHODS, BEST_TABS } from '@/app/lib/data';
 import { HOME_LAYOUT_KEY, DEFAULT_HOME_LAYOUT, HomeSection } from '@/app/components/pages/AdminPage';
+import { t } from '@/app/lib/i18n';
 import { fetchCases, fetchHomeLayout } from '@/app/lib/db';
 import { CoinIcon } from '../CoinIcon';
 import { Placeholder } from '../Placeholder';
@@ -45,7 +46,7 @@ interface WinEntry { won_value: number; won_item: string; won_item_image: string
 interface BiggestWins { daily: WinEntry | null; weekly: WinEntry | null; monthly: WinEntry | null; }
 
 export function HomePage() {
-  const { go, login, openCase, flash, bestTab, setBestTab, logged, user } = useStore();
+  const { go, login, openCase, flash, bestTab, setBestTab, logged, user, lang } = useStore();
   const [layout, setLayout] = useState<HomeSection[]>(DEFAULT_HOME_LAYOUT);
   const [dbCaseMap, setDbCaseMap] = useState<Map<string, CaseItem>>(new Map());
   const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
@@ -145,21 +146,21 @@ export function HomePage() {
             <img src="/mascot.png" alt="SkinMaze mascot" style={{ position: 'absolute', right: 0, bottom: 0,
               height: '115%', width: 'auto', objectFit: 'contain', pointerEvents: 'none' }} />
             {/* Text content */}
-            <h1 style={{ fontWeight: 700, fontSize: 30, margin: '0 0 10px', position: 'relative' }}>Welcome to SkinMaze</h1>
+            <h1 style={{ fontWeight: 700, fontSize: 30, margin: '0 0 10px', position: 'relative' }}>{t('hero_title', lang)}</h1>
             <p style={{ margin: '0 0 22px', color: '#9aa39a', fontSize: 14, lineHeight: 1.55, maxWidth: 300, position: 'relative' }}>
-              Your premier place for CS2 Fun!<br />Register and get deposit bonus &amp; 5 Free Cases
+              {t('hero_sub', lang)}<br />{t('hero_desc', lang)}
             </p>
             <button onClick={login} style={{ fontWeight: 700, fontSize: 14, color: '#06270a',
               background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none', padding: '13px 28px',
               borderRadius: 11, cursor: 'pointer', width: 'fit-content', boxShadow: '0 8px 20px rgba(95,213,95,.3)', position: 'relative' }}>
-              Login/Register
+              {t('hero_btn', lang)}
             </button>
           </div>
         )}
 
         {/* Right: Highest Win — live */}
         {(() => {
-          const periodMap: Record<WinPeriod, string> = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' };
+          const periodMap: Record<WinPeriod, string> = { daily: t('period_daily', lang), weekly: t('period_weekly', lang), monthly: t('period_monthly', lang) };
           const win = biggestWins?.[winPeriod];
           const itemColor = win?.won_item_color ?? '#eb4b4b';
           return (
@@ -168,7 +169,7 @@ export function HomePage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <h2 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 24, margin: '0 0 12px' }}>
-                    Highest <span style={{ color: '#5fd75f' }}>Win</span>
+                    {t('highest_win', lang)}
                   </h2>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 20, marginBottom: 6 }}>
                     <CoinIcon size={18} />
@@ -202,7 +203,7 @@ export function HomePage() {
                     ? <img src={win.won_item_image} alt="" style={{ width: 90, height: 70, objectFit: 'contain', marginBottom: 'auto', marginTop: 6 }} />
                     : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#7a5c5c', marginBottom: 'auto', marginTop: 8 }}>—</span>}
                   <span style={{ fontSize: 11, fontWeight: 600, color: itemColor, lineHeight: 1.3 }}>
-                    {win?.won_item ?? 'No data yet'}
+                    {win?.won_item ?? t('no_data', lang)}
                   </span>
                 </div>
               </div>
@@ -312,8 +313,8 @@ export function HomePage() {
         {/* Tetris bg */}
         <img src="/bg-tetris.png" alt="" style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 'auto', pointerEvents: 'none', opacity: 0.5 }} />
         <div style={{ position: 'relative' }}>
-          <div style={{ fontWeight: 700, fontSize: 20 }}>Make Deposit</div>
-          <div style={{ color: '#9aa39a', fontSize: 13 }}>50+ Methods</div>
+          <div style={{ fontWeight: 700, fontSize: 20 }}>{t('make_deposit', lang)}</div>
+          <div style={{ color: '#9aa39a', fontSize: 13 }}>{t('methods_50', lang)}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', position: 'relative' }}>
           {PAY_METHODS.map(p => (
@@ -324,7 +325,7 @@ export function HomePage() {
         </div>
         <button onClick={() => flash('Coming soon ✨')} style={{ fontWeight: 700, position: 'relative',
           fontSize: 14, color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)',
-          border: 'none', padding: '12px 26px', borderRadius: 11, cursor: 'pointer' }}>Deposit</button>
+          border: 'none', padding: '12px 26px', borderRadius: 11, cursor: 'pointer' }}>{t('deposit_btn', lang)}</button>
       </div>
 
       {/* Support cards */}
@@ -333,12 +334,12 @@ export function HomePage() {
         <div style={{ border: '1px solid rgba(95,213,95,.2)', borderRadius: 16, padding: '28px 24px',
           background: 'linear-gradient(120deg,#0c130b,#0e1a0d)', position: 'relative', overflow: 'hidden', minHeight: 200 }}>
           <img src="/bg-tetris.png" alt="" style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 'auto', pointerEvents: 'none', opacity: 0.35 }} />
-          <h3 style={{ fontWeight: 700, fontSize: 20, margin: '0 0 4px', position: 'relative' }}>Grassroots Support</h3>
-          <div style={{ fontSize: 13, color: '#cfd4cf', marginBottom: 8, position: 'relative' }}>&ldquo;KLEVERR&rdquo; Latvian League</div>
-          <p style={{ fontSize: 13, color: '#9aa39a', margin: '0 0 20px', maxWidth: 200, position: 'relative' }}>We&apos;ve been proud supporter of biggest esports league in Latvia</p>
+          <h3 style={{ fontWeight: 700, fontSize: 20, margin: '0 0 4px', position: 'relative' }}>{t('grassroots_title', lang)}</h3>
+          <div style={{ fontSize: 13, color: '#cfd4cf', marginBottom: 8, position: 'relative' }}>{t('grassroots_sub', lang)}</div>
+          <p style={{ fontSize: 13, color: '#9aa39a', margin: '0 0 20px', maxWidth: 200, position: 'relative' }}>{t('grassroots_desc', lang)}</p>
           <button onClick={() => go('cases')} style={{ fontWeight: 700, fontSize: 13, position: 'relative',
             color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none',
-            padding: '10px 20px', borderRadius: 10, cursor: 'pointer' }}>Open Cases</button>
+            padding: '10px 20px', borderRadius: 10, cursor: 'pointer' }}>{t('open_cases', lang)}</button>
           <img src="/kleverr-logo.png" alt="Kleverr Virsliga"
             style={{ position: 'absolute', right: 16, bottom: 0,
               height: 185, width: 'auto', objectFit: 'contain', pointerEvents: 'none' }} />
@@ -351,13 +352,13 @@ export function HomePage() {
           {/* Title row with team logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, position: 'relative' }}>
             <img src="/team-logo.png" alt="EC Banga" style={{ width: 28, height: 28, objectFit: 'contain' }} />
-            <h3 style={{ fontWeight: 700, fontSize: 20, margin: 0 }}>Team Support</h3>
+            <h3 style={{ fontWeight: 700, fontSize: 20, margin: 0 }}>{t('team_title', lang)}</h3>
           </div>
           <div style={{ fontSize: 13, color: '#cfd4cf', marginBottom: 8, position: 'relative' }}>EC BANGA</div>
-          <p style={{ fontSize: 13, color: '#9aa39a', margin: '0 0 20px', maxWidth: 200, position: 'relative' }}>We&apos;ve been proud supporter of the Griezes / EC Banga esports team</p>
+          <p style={{ fontSize: 13, color: '#9aa39a', margin: '0 0 20px', maxWidth: 200, position: 'relative' }}>{t('team_desc', lang)}</p>
           <button onClick={() => go('cases')} style={{ fontWeight: 700, fontSize: 13, position: 'relative',
             color: '#fff', background: 'linear-gradient(160deg,#e8843e,#cc5a22)', border: 'none',
-            padding: '10px 20px', borderRadius: 10, cursor: 'pointer' }}>Open Cases</button>
+            padding: '10px 20px', borderRadius: 10, cursor: 'pointer' }}>{t('open_cases', lang)}</button>
           {/* Two player photos side by side */}
           <img src="/player-danss.png" alt="Danss"
             style={{ position: 'absolute', right: 100, bottom: 0,
@@ -375,24 +376,24 @@ export function HomePage() {
         <img src="/bg-tetris.png" alt="" style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 'auto', pointerEvents: 'none', opacity: 0.3 }} />
         <div style={{ maxWidth: 380, position: 'relative' }}>
           <h3 style={{ fontWeight: 700, fontSize: 24, margin: '0 0 8px' }}>
-            We Made It <span style={{ color: '#5fd75f' }}>Together</span>
+            {t('together_title', lang)} <span style={{ color: '#5fd75f' }}>{t('together_accent', lang)}</span>
           </h3>
           <p style={{ fontSize: 13, color: '#9aa39a', margin: '0 0 18px' }}>
-            From Day 1 we at SkinMaze have awarded our users with bonuses, promo codes and freebies. Be part of our SkinMaze community
+            {t('together_desc', lang)}
           </p>
           <button onClick={() => flash('Coming soon ✨')} style={{ fontWeight: 600,
             fontSize: 13, color: '#cfd4cf', background: '#0e120e', border: '1px solid rgba(255,255,255,.12)',
             padding: '10px 18px', borderRadius: 10, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <img src="/icon-discord.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
-            Join our Discord
+            {t('join_discord', lang)}
           </button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 52px', position: 'relative' }}>
           {[
-            { n: platformStats ? platformStats.totalPlayers.toLocaleString() : '—', l: 'Players',      icon: '/icon-players.png' },
-            { n: platformStats ? platformStats.onlinePlayers.toLocaleString() : '—', l: 'Online',       icon: '/icon-online.png'  },
-            { n: platformStats ? platformStats.casesOpened.toLocaleString()  : '—', l: 'Opened Cases', icon: '/icon-cases.png'   },
-            { n: '24/7',                                                             l: 'Support',      icon: '/icon-support.png' },
+            { n: platformStats ? platformStats.totalPlayers.toLocaleString() : '—', l: t('stat_players', lang), icon: '/icon-players.png' },
+            { n: platformStats ? platformStats.onlinePlayers.toLocaleString() : '—', l: t('stat_online', lang),  icon: '/icon-online.png'  },
+            { n: platformStats ? platformStats.casesOpened.toLocaleString()  : '—', l: t('stat_cases', lang),   icon: '/icon-cases.png'   },
+            { n: '24/7',                                                              l: t('stat_support', lang), icon: '/icon-support.png' },
           ].map(({ n, l, icon }) => (
             <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <img src={icon} alt="" style={{ width: 40, height: 40, objectFit: 'contain', flexShrink: 0 }} />
