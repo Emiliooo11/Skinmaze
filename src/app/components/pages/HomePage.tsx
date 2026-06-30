@@ -294,19 +294,21 @@ export function HomePage() {
       {/* Deposit strip */}
       <div style={{ border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: '22px 26px', marginBottom: 22,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20,
-        background: '#0b0e0a', flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 20 }}>Make Deposit</div>
+        background: '#0b0e0a', overflow: 'hidden', position: 'relative', flexWrap: 'wrap' }}>
+        {/* Tetris bg */}
+        <img src="/bg-tetris.png" alt="" style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 'auto', pointerEvents: 'none', opacity: 0.5 }} />
+        <div style={{ position: 'relative' }}>
+          <div style={{ fontWeight: 700, fontSize: 20 }}>Make Deposit</div>
           <div style={{ color: '#9aa39a', fontSize: 13 }}>50+ Methods</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', position: 'relative' }}>
           {PAY_METHODS.map(p => (
             <div key={p.name} style={{ background: '#11140f', border: '1px solid rgba(255,255,255,.07)', padding: '10px 16px', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <img src={p.src} alt={p.name} style={{ height: 16, width: 'auto', display: 'block', filter: 'brightness(0) invert(1)', opacity: 0.75 }} />
             </div>
           ))}
         </div>
-        <button onClick={() => flash('Coming soon ✨')} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700,
+        <button onClick={() => flash('Coming soon ✨')} style={{ fontWeight: 700, position: 'relative',
           fontSize: 14, color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)',
           border: 'none', padding: '12px 26px', borderRadius: 11, cursor: 'pointer' }}>Deposit</button>
       </div>
@@ -314,68 +316,75 @@ export function HomePage() {
       {/* Support cards */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginBottom: 22 }}>
         {/* Grassroots — Kleverr */}
-        <div style={{ border: '1px solid rgba(95,213,95,.2)', borderRadius: 16, padding: 24,
-          background: 'linear-gradient(120deg,#0c130b,#0e1a0d)', position: 'relative', overflow: 'hidden', minHeight: 160 }}>
-          <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>Grassroots Support</h3>
-          <div style={{ fontSize: 13, color: '#cfd4cf', marginBottom: 8 }}>&ldquo;KLEVERR&rdquo; Latvian League</div>
-          <p style={{ fontSize: 13, color: '#9aa39a', margin: '0 0 18px', maxWidth: 220 }}>We&apos;ve been proud supporter of the biggest esports league in Latvia</p>
-          <button onClick={() => go('cases')} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 13,
+        <div style={{ border: '1px solid rgba(95,213,95,.2)', borderRadius: 16, padding: '28px 24px',
+          background: 'linear-gradient(120deg,#0c130b,#0e1a0d)', position: 'relative', overflow: 'hidden', minHeight: 200 }}>
+          <img src="/bg-tetris.png" alt="" style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 'auto', pointerEvents: 'none', opacity: 0.35 }} />
+          <h3 style={{ fontWeight: 700, fontSize: 20, margin: '0 0 4px', position: 'relative' }}>Grassroots Support</h3>
+          <div style={{ fontSize: 13, color: '#cfd4cf', marginBottom: 8, position: 'relative' }}>&ldquo;KLEVERR&rdquo; Latvian League</div>
+          <p style={{ fontSize: 13, color: '#9aa39a', margin: '0 0 20px', maxWidth: 200, position: 'relative' }}>We&apos;ve been proud supporter of biggest esports league in Latvia</p>
+          <button onClick={() => go('cases')} style={{ fontWeight: 700, fontSize: 13, position: 'relative',
             color: '#06270a', background: 'linear-gradient(160deg,#74e36b,#46c041)', border: 'none',
             padding: '10px 20px', borderRadius: 10, cursor: 'pointer' }}>Open Cases</button>
-          {/* Kleverr logo */}
           <img src="/kleverr-logo.png" alt="Kleverr Virsliga"
-            style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)',
-              height: 120, width: 'auto', objectFit: 'contain', pointerEvents: 'none' }} />
+            style={{ position: 'absolute', right: 16, bottom: 0,
+              height: 185, width: 'auto', objectFit: 'contain', pointerEvents: 'none' }} />
         </div>
+
         {/* Team support — EC Banga */}
-        <div style={{ border: '1px solid rgba(230,120,60,.25)', borderRadius: 16, padding: 24,
-          background: 'linear-gradient(120deg,#140d09,#1a100b)', position: 'relative', overflow: 'hidden', minHeight: 160 }}>
-          <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 18, margin: '0 0 4px' }}>Team Support</h3>
-          <div style={{ fontSize: 13, color: '#cfd4cf', marginBottom: 8 }}>EC BANGA</div>
-          <p style={{ fontSize: 13, color: '#9aa39a', margin: '0 0 18px', maxWidth: 220 }}>We&apos;ve been proud supporter of the Griezes / EC Banga esports team</p>
-          <button onClick={() => go('cases')} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 13,
+        <div style={{ border: '1px solid rgba(230,120,60,.25)', borderRadius: 16, padding: '28px 24px',
+          background: 'linear-gradient(135deg,#1a0e08,#2a1506)', position: 'relative', overflow: 'hidden', minHeight: 200 }}>
+          <img src="/bg-tetris.png" alt="" style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 'auto', pointerEvents: 'none', opacity: 0.2 }} />
+          {/* Title row with team logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, position: 'relative' }}>
+            <img src="/team-logo.png" alt="EC Banga" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+            <h3 style={{ fontWeight: 700, fontSize: 20, margin: 0 }}>Team Support</h3>
+          </div>
+          <div style={{ fontSize: 13, color: '#cfd4cf', marginBottom: 8, position: 'relative' }}>EC BANGA</div>
+          <p style={{ fontSize: 13, color: '#9aa39a', margin: '0 0 20px', maxWidth: 200, position: 'relative' }}>We&apos;ve been proud supporter of the Griezes / EC Banga esports team</p>
+          <button onClick={() => go('cases')} style={{ fontWeight: 700, fontSize: 13, position: 'relative',
             color: '#fff', background: 'linear-gradient(160deg,#e8843e,#cc5a22)', border: 'none',
             padding: '10px 20px', borderRadius: 10, cursor: 'pointer' }}>Open Cases</button>
-          {/* Two player photos */}
+          {/* Two player photos side by side */}
           <img src="/player-danss.png" alt="Danss"
-            style={{ position: 'absolute', right: 80, bottom: 0,
-              height: 148, width: 'auto', objectFit: 'contain', pointerEvents: 'none' }} />
+            style={{ position: 'absolute', right: 100, bottom: 0,
+              height: 190, width: 'auto', objectFit: 'contain', pointerEvents: 'none' }} />
           <img src="/player-labreenc.png" alt="Labreenc"
             style={{ position: 'absolute', right: 0, bottom: 0,
-              height: 148, width: 'auto', objectFit: 'contain', pointerEvents: 'none' }} />
+              height: 190, width: 'auto', objectFit: 'contain', pointerEvents: 'none' }} />
         </div>
       </div>
 
-      {/* Stats */}
-      <div style={{ border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: 26,
+      {/* Stats — We Made It Together */}
+      <div style={{ border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: '28px 32px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24,
-        background: '#0b0e0a', flexWrap: 'wrap' }}>
-        <div style={{ maxWidth: 380 }}>
-          <h3 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 22, margin: '0 0 8px' }}>
+        background: '#0b0e0a', position: 'relative', overflow: 'hidden', flexWrap: 'wrap' }}>
+        <img src="/bg-tetris.png" alt="" style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 'auto', pointerEvents: 'none', opacity: 0.3 }} />
+        <div style={{ maxWidth: 380, position: 'relative' }}>
+          <h3 style={{ fontWeight: 700, fontSize: 24, margin: '0 0 8px' }}>
             We Made It <span style={{ color: '#5fd75f' }}>Together</span>
           </h3>
           <p style={{ fontSize: 13, color: '#9aa39a', margin: '0 0 18px' }}>
             From Day 1 we at SkinMaze have awarded our users with bonuses, promo codes and freebies. Be part of our SkinMaze community
           </p>
-          <button onClick={() => flash('Coming soon ✨')} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600,
+          <button onClick={() => flash('Coming soon ✨')} style={{ fontWeight: 600,
             fontSize: 13, color: '#cfd4cf', background: '#0e120e', border: '1px solid rgba(255,255,255,.12)',
             padding: '10px 18px', borderRadius: 10, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <img src="/icon-discord.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
             Join our Discord
           </button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 44px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 52px', position: 'relative' }}>
           {[
             { n: platformStats ? platformStats.totalPlayers.toLocaleString() : '—', l: 'Players',      icon: '/icon-players.png' },
             { n: platformStats ? platformStats.onlinePlayers.toLocaleString() : '—', l: 'Online',       icon: '/icon-online.png'  },
             { n: platformStats ? platformStats.casesOpened.toLocaleString()  : '—', l: 'Opened Cases', icon: '/icon-cases.png'   },
             { n: '24/7',                                                             l: 'Support',      icon: '/icon-support.png' },
           ].map(({ n, l, icon }) => (
-            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <img src={icon} alt="" style={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }} />
+            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <img src={icon} alt="" style={{ width: 40, height: 40, objectFit: 'contain', flexShrink: 0 }} />
               <div>
-                <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 22, color: '#5fd75f', lineHeight: 1.1 }}>{n}</div>
-                <div style={{ fontSize: 12, color: '#9aa39a' }}>{l}</div>
+                <div style={{ fontWeight: 700, fontSize: 28, color: '#5fd75f', lineHeight: 1 }}>{n}</div>
+                <div style={{ fontSize: 13, color: '#9aa39a', marginTop: 2 }}>{l}</div>
               </div>
             </div>
           ))}
