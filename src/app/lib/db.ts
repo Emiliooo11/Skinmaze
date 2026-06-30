@@ -225,6 +225,14 @@ export interface DbReferralCode {
   affiliate_id: string;
   code: string;
   created_at: string;
+  // Extended rule fields
+  max_uses: number | null;
+  used_count: number;
+  expires_at: string | null;
+  reward_type: 'coins' | 'free_cases' | 'deposit_bonus' | null;
+  reward_value: number;
+  clicks: number;
+  description: string;
 }
 
 export interface DbReferralUse {
@@ -256,11 +264,57 @@ export async function fetchReferralCodes(affiliateId: string): Promise<DbReferra
   return data ?? [];
 }
 
-export async function createReferralCode(affiliateId: string, code: string): Promise<DbReferralCode | null> {
+export async function createReferralCode(
+  affiliateId: string,
+  code: string,
+  opts?: {
+    max_uses?: number | null;
+    expires_at?: string | null;
+    reward_type?: DbReferralCode['reward_type'];
+    reward_value?: number;
+    description?: string;
+  }
+): Promise<DbReferralCode | null> {
   const { data, error } = await supabase.from('referral_codes')
-    .insert({ affiliate_id: affiliateId, code }).select().single();
+    .insert({
+      affiliate_id: affiliateId,
+      code,
+      max_uses: opts?.max_uses ?? null,
+      expires_at: opts?.expires_at ?? null,
+      reward_type: opts?.reward_type ?? null,
+      reward_value: opts?.reward_value ?? 0,
+      description: opts?.description ?? '',
+      used_count: 0,
+      clicks: 0,
+    }).select().single();
   if (error) { console.error(error); return null; }
   return data;
+}
+
+export async function updateReferralCode(
+  id: string,
+  updates: Partial<Pick<DbReferralCode, 'max_uses' | 'expires_at' | 'reward_type' | 'reward_value' | 'description'>>
+): Promise<DbReferralCode | null> {
+  const { data, error } = await supabase.from('referral_codes')
+    .update(updates).eq('id', id).select().single();
+  if (error) { console.error(error); return null; }
+  return data;
+}
+
+export async function incrementReferralClick(code: string): Promise<void> {
+  await supabase.rpc('increment_referral_clicks', { p_code: code });
+}
+
+export async function fetchReferralCodeByCode(code: string): Promise<DbReferralCode | null> {
+  const { data } = await supabase.from('referral_codes').select('*').eq('code', code).maybeSingle();
+  return data ?? null;
+}
+
+export async function recordReferralUse(codeId: string, playerId: string): Promise<boolean> {
+  const { error } = await supabase.from('referral_uses').insert({ code_id: codeId, player_id: playerId, wager_amount: 0 });
+  if (error) { console.error(error); return false; }
+  try { await supabase.rpc('increment_referral_used_count', { p_code_id: codeId }); } catch {}
+  return true;
 }
 
 export async function deleteReferralCode(id: string) {

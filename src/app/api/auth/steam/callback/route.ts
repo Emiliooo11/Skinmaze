@@ -64,6 +64,9 @@ export async function GET(request: Request) {
     let player = existing;
 
     if (!existing) {
+      // Read referral code cookie before creating player
+      const refCode = cookieStore.get('ref_code')?.value ?? null;
+
       const { data: created, error: insertError } = await supabase
         .from('players')
         .insert({
@@ -86,6 +89,35 @@ export async function GET(request: Request) {
         return NextResponse.redirect(`${baseUrl}/?error=${encodeURIComponent(insertError.code + ': ' + insertError.message)}`);
       }
       player = created;
+
+      // Process referral reward for new player
+      if (refCode && player) {
+        try {
+          const { data: rc } = await supabase
+            .from('referral_codes')
+            .select('*')
+            .eq('code', refCode.toUpperCase())
+            .maybeSingle();
+
+          if (
+            rc &&
+            (rc.expires_at === null || new Date(rc.expires_at) >= new Date()) &&
+            (rc.max_uses === null || rc.used_count < rc.max_uses)
+          ) {
+            await supabase.from('referral_uses').insert({ code_id: rc.id, player_id: player.id, wager_amount: 0 });
+            try { await supabase.rpc('increment_referral_used_count', { p_code_id: rc.id }); } catch {}
+
+            if ((rc.reward_type === 'coins' || rc.reward_type === 'free_cases') && rc.reward_value > 0) {
+              const newBalance = (player.balance || 0) + rc.reward_value;
+              await supabase.from('players').update({ balance: newBalance }).eq('id', player.id);
+              player = { ...player, balance: newBalance };
+            }
+          }
+        } catch (e) {
+          console.warn('Referral processing error:', e);
+        }
+        cookieStore.delete('ref_code');
+      }
     } else {
       await supabase
         .from('players')
