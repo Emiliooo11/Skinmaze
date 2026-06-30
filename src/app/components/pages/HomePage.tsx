@@ -360,19 +360,23 @@ export function HomePage() {
           <button onClick={() => flash('Coming soon ✨')} style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600,
             fontSize: 13, color: '#cfd4cf', background: '#0e120e', border: '1px solid rgba(255,255,255,.12)',
             padding: '10px 18px', borderRadius: 10, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            💬 Join our Discord
+            <img src="/icon-discord.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
+            Join our Discord
           </button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 44px' }}>
           {[
-            { n: platformStats ? platformStats.totalPlayers.toLocaleString() : '—', l: 'Players' },
-            { n: platformStats ? platformStats.onlinePlayers.toLocaleString() : '—', l: 'Online' },
-            { n: platformStats ? platformStats.casesOpened.toLocaleString()  : '—', l: 'Opened Cases' },
-            { n: '24/7', l: 'Support' },
-          ].map(({ n, l }) => (
-            <div key={l}>
-              <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 22, color: '#5fd75f' }}>{n}</div>
-              <div style={{ fontSize: 12, color: '#9aa39a' }}>{l}</div>
+            { n: platformStats ? platformStats.totalPlayers.toLocaleString() : '—', l: 'Players',      icon: '/icon-players.png' },
+            { n: platformStats ? platformStats.onlinePlayers.toLocaleString() : '—', l: 'Online',       icon: '/icon-online.png'  },
+            { n: platformStats ? platformStats.casesOpened.toLocaleString()  : '—', l: 'Opened Cases', icon: '/icon-cases.png'   },
+            { n: '24/7',                                                             l: 'Support',      icon: '/icon-support.png' },
+          ].map(({ n, l, icon }) => (
+            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <img src={icon} alt="" style={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700, fontSize: 22, color: '#5fd75f', lineHeight: 1.1 }}>{n}</div>
+                <div style={{ fontSize: 12, color: '#9aa39a' }}>{l}</div>
+              </div>
             </div>
           ))}
         </div>
