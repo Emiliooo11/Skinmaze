@@ -438,7 +438,7 @@ function DashboardSection({ stats, cases, players, wagers }: { stats: DashboardS
             <tbody>
               {wagers.slice(0, 20).map(w => (
                 <tr key={w.id} style={{ borderBottom: '1px solid #f9fafb' }}>
-                  <td style={{ padding: '9px 12px', color: C.primary, fontWeight: 600 }}>{w.player_id.slice(0, 8)}</td>
+                  <td style={{ padding: '9px 12px', color: C.primary, fontWeight: 600 }}>{(w.player_id ?? '—').slice(0, 8)}</td>
                   <td style={{ padding: '9px 12px', color: C.secondary }}>{w.case_name}</td>
                   <td style={{ padding: '9px 12px', color: C.secondary }}>${(w.amount ?? 0).toFixed(2)}</td>
                   <td style={{ padding: '9px 12px', color: C.secondary, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.won_item}</td>
