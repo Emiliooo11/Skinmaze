@@ -274,27 +274,53 @@ export function HomePage() {
 
       {/* Section 4 — Best Sellers */}
       {bestItems.length > 0 && (
-        <div style={{ borderRadius: 18, padding: '30px 24px 28px', marginBottom: 26,
-          background: 'radial-gradient(ellipse at center,#15130a,#0a0c08 75%)',
-          border: '1px solid rgba(230,195,62,.14)', position: 'relative', overflow: 'hidden' }}>
-          <h2 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 800, fontSize: 30, textAlign: 'center', margin: '0 0 4px',
-            letterSpacing: 2, background: 'linear-gradient(180deg,#ffe88a,#d99a1e)', WebkitBackgroundClip: 'text',
-            backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s4?.title?.toUpperCase() ?? 'BEST SELLERS'}</h2>
-          <p style={{ textAlign: 'center', color: '#9aa39a', fontSize: 13, margin: '0 0 18px' }}>
+        <div style={{ borderRadius: 20, padding: '36px 32px 32px', marginBottom: 26,
+          background: 'radial-gradient(ellipse 80% 60% at 50% 40%,#1e1a08 0%,#0c0a04 60%,#080706 100%)',
+          border: '1px solid rgba(230,195,62,.22)', position: 'relative', overflow: 'visible',
+          boxShadow: '0 0 60px rgba(200,160,30,.08)' }}>
+
+          {/* Floating coins — left side */}
+          <img src="/bs-coin-9.png"  alt="" style={{ position: 'absolute', left: -28, top: '15%', width: 80,  pointerEvents: 'none', transform: 'rotate(-15deg)', filter: 'drop-shadow(0 8px 16px rgba(180,140,0,.5))' }} />
+          <img src="/bs-coin-3.png"  alt="" style={{ position: 'absolute', left: -12, top: '55%', width: 52,  pointerEvents: 'none', transform: 'rotate(10deg)',  filter: 'drop-shadow(0 6px 12px rgba(180,140,0,.4))' }} />
+          <img src="/bs-coin-1.png"  alt="" style={{ position: 'absolute', left: 40,  top: '80%', width: 34,  pointerEvents: 'none', transform: 'rotate(-5deg)',  filter: 'drop-shadow(0 4px 8px rgba(180,140,0,.35))' }} />
+          <img src="/bs-coin-6.png"  alt="" style={{ position: 'absolute', left: 80,  top: '5%',  width: 30,  pointerEvents: 'none', opacity: 0.55 }} />
+
+          {/* Floating coins — right side */}
+          <img src="/bs-coin-5.png"  alt="" style={{ position: 'absolute', right: -24, top: '12%', width: 80,  pointerEvents: 'none', transform: 'rotate(12deg)',  filter: 'drop-shadow(0 8px 16px rgba(180,140,0,.5))' }} />
+          <img src="/bs-coin-8.png"  alt="" style={{ position: 'absolute', right: -8,  top: '55%', width: 54,  pointerEvents: 'none', transform: 'rotate(-8deg)',  filter: 'drop-shadow(0 6px 12px rgba(180,140,0,.4))' }} />
+          <img src="/bs-coin-2.png"  alt="" style={{ position: 'absolute', right: 44,  top: '82%', width: 32,  pointerEvents: 'none', transform: 'rotate(6deg)',   filter: 'drop-shadow(0 4px 8px rgba(180,140,0,.35))' }} />
+          <img src="/bs-coin-7.png"  alt="" style={{ position: 'absolute', right: 70,  top: '4%',  width: 28,  pointerEvents: 'none', opacity: 0.5 }} />
+          <img src="/bs-coin-4.png"  alt="" style={{ position: 'absolute', right: 120, top: '90%', width: 24,  pointerEvents: 'none', opacity: 0.45 }} />
+
+          {/* Title */}
+          <h2 style={{ fontWeight: 900, fontSize: 38, textAlign: 'center', margin: '0 0 8px',
+            letterSpacing: 3, background: 'linear-gradient(180deg,#ffe88a 0%,#c8900a 100%)',
+            WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            position: 'relative', textTransform: 'uppercase' }}>
+            {s4?.title ?? 'Best Sellers'}
+          </h2>
+          <p style={{ textAlign: 'center', color: '#9aa39a', fontSize: 13, margin: '0 0 22px', position: 'relative' }}>
             The most expensive and top collection for the best players
           </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 22, flexWrap: 'wrap' }}>
+
+          {/* Filter tabs */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 26, flexWrap: 'wrap', position: 'relative' }}>
             {BEST_TABS.map(label => {
-              const st = tabStyle(bestTab === label);
+              const active = bestTab === label;
               return (
-                <span key={label} onClick={() => setBestTab(label)} style={{ padding: '8px 16px', borderRadius: 9,
-                  fontSize: 12.5, fontWeight: 500, cursor: 'pointer', ...st }}>
+                <span key={label} onClick={() => setBestTab(label)} style={{ padding: '8px 18px', borderRadius: 20,
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all .15s',
+                  border: active ? 'none' : '1px solid rgba(255,255,255,.1)',
+                  background: active ? 'linear-gradient(160deg,#74e36b,#46c041)' : 'rgba(255,255,255,.04)',
+                  color: active ? '#06270a' : '#9aa39a' }}>
                   {label}
                 </span>
               );
             })}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14 }}>
+
+          {/* Case grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14, position: 'relative' }}>
             {bestItems.map(c => <CaseCard key={c.id} name={c.name} price={c.price} onOpen={() => openCase(c)} />)}
           </div>
         </div>
