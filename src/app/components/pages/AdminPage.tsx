@@ -195,7 +195,7 @@ export function AdminPage() {
   if (view === 'builder' && editing) {
     return (
       <AdminShell section={section} onSection={s => { setSection(s); setView('list'); }}>
-        <CaseBuilder initial={editing} collections={collections} onSave={async c => { await saveCase(c); setEditing(null); setView('list'); }} onBack={() => { setEditing(null); setView('list'); }} />
+        <CaseBuilder initial={editing} collections={collections} homeLayout={homeLayout} onSave={async (c, sectionId) => { await saveCase(c); if (sectionId) { const updated = homeLayout.map(s => s.id === sectionId && !s.caseIds.includes(c.id) ? { ...s, caseIds: [...s.caseIds, c.id] } : s); await updateHomeLayout(updated); } setEditing(null); setView('list'); }} onBack={() => { setEditing(null); setView('list'); }} onManageImages={() => setView('library')} />
       </AdminShell>
     );
   }
@@ -734,17 +734,19 @@ function computeTargetPrices(evUsd: number, counts: Record<Rarity, number>): Rec
 
 interface AutoState { open: boolean; counts: Record<Rarity, number>; generating: boolean; error: string; }
 
-function AutoGeneratePanel({ draft, houseEdge, onApply }: {
+function AutoGeneratePanel({ draft, houseEdge, onApply, onSetPrice }: {
   draft: AdminCase; houseEdge: number;
   onApply: (skins: AdminSkin[]) => void;
+  onSetPrice: (price: string) => void;
 }) {
   const [state, setState] = useState<AutoState>({
     open: false,
     counts: { gold: 1, red: 2, pink: 4, purple: 6, blue: 5 },
     generating: false, error: '',
   });
+  const [localPrice, setLocalPrice] = useState(draft.price !== '0.00' ? draft.price : '');
 
-  const priceUsd = parseFloat(draft.price) || 0;
+  const priceUsd = parseFloat(localPrice) || 0;
   const evUsd = priceUsd * (1 - houseEdge / 100);
   const totalSkins = RAR_ORDER.reduce((s, r) => s + state.counts[r], 0);
   const targets = computeTargetPrices(evUsd, state.counts);
@@ -814,11 +816,23 @@ function AutoGeneratePanel({ draft, houseEdge, onApply }: {
 
       {state.open && (
         <div style={{ padding: '0 18px 18px', borderTop: `1px solid ${C.border}` }}>
-          <div style={{ marginTop: 14, marginBottom: 14, padding: '10px 14px', background: '#f9fafb', borderRadius: 8, fontSize: 12, color: C.secondary }}>
-            Target EV: <strong style={{ color: C.accent }}>${evUsd.toFixed(2)} USD</strong> &nbsp;·&nbsp;
-            Case price: <strong>${priceUsd.toFixed(2)}</strong> &nbsp;·&nbsp;
-            House edge: <strong>{houseEdge}%</strong> &nbsp;·&nbsp;
-            Total skins: <strong>{totalSkins}</strong>
+          <div style={{ marginTop: 14, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: C.muted, marginBottom: 5 }}>Case Price (USD)</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13, color: C.secondary }}>$</span>
+                <input type="number" min={0.01} step={0.01} placeholder="e.g. 9.99" value={localPrice}
+                  onChange={e => { setLocalPrice(e.target.value); onSetPrice(e.target.value); }}
+                  style={{ width: 120, background: '#f9fafb', border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 10px', fontSize: 13, fontWeight: 700, outline: 'none', color: C.primary }} />
+              </div>
+            </div>
+            {priceUsd > 0 && (
+              <div style={{ fontSize: 12, color: C.secondary, background: '#f9fafb', border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 14px' }}>
+                Target EV: <strong style={{ color: C.accent }}>${evUsd.toFixed(2)}</strong> &nbsp;·&nbsp;
+                Edge: <strong>{houseEdge}%</strong> &nbsp;·&nbsp;
+                Skins: <strong>{totalSkins}</strong>
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 14 }}>
@@ -861,8 +875,9 @@ const RAR_CHIPS = [
 ];
 const PAGE_SIZE = 48;
 
-function CaseBuilder({ initial, collections, onSave, onBack }: { initial: AdminCase; collections: ImageCollection[]; onSave: (c: AdminCase) => void; onBack: () => void }) {
+function CaseBuilder({ initial, collections, homeLayout, onSave, onBack, onManageImages }: { initial: AdminCase; collections: ImageCollection[]; homeLayout: HomeSection[]; onSave: (c: AdminCase, sectionId?: string) => void; onBack: () => void; onManageImages: () => void }) {
   const [draft, setDraft] = useState<AdminCase>(initial);
+  const [selectedSection, setSelectedSection] = useState<string>('');
   const [query, setQuery] = useState('');
   const [catFilter, setCatFilter] = useState('');
   const [rarFilter, setRarFilter] = useState('');
@@ -936,7 +951,7 @@ function CaseBuilder({ initial, collections, onSave, onBack }: { initial: AdminC
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
         <Btn variant="secondary" onClick={onBack}><span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><IconBack /> Back</span></Btn>
         <h1 style={{ fontFamily: 'var(--font-funnel)', fontWeight: 700, fontSize: 22, margin: 0, flex: 1, color: C.primary }}>{draft.name || 'New Case'}</h1>
-        <Btn onClick={() => totalOk ? onSave(draft) : undefined} disabled={!totalOk}>Save Case</Btn>
+        <Btn onClick={() => totalOk ? onSave(draft, selectedSection || undefined) : undefined} disabled={!totalOk}>Save Case</Btn>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20, alignItems: 'start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -944,7 +959,15 @@ function CaseBuilder({ initial, collections, onSave, onBack }: { initial: AdminC
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><img src={draft.image} alt="case" style={{ height: 100, objectFit: 'contain', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,.15))' }} /></div>
             <FieldLabel>Case Name</FieldLabel>
             <FormInput value={draft.name} onChange={v => setDraft(d => ({ ...d, name: v }))} placeholder="e.g. Pandora Box" />
+            <FieldLabel>Home Section (Collection)</FieldLabel>
+            <select value={selectedSection} onChange={e => setSelectedSection(e.target.value)} style={inputStyle}>
+              <option value="">— None —</option>
+              {homeLayout.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+            </select>
             <FieldLabel>Case Image</FieldLabel>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+              <Btn size="sm" variant="ghost" onClick={onManageImages}><span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><IconImage /> Manage Collections</span></Btn>
+            </div>
             <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
               {collections.map(col => (
                 <div key={col.id}>
@@ -987,7 +1010,7 @@ function CaseBuilder({ initial, collections, onSave, onBack }: { initial: AdminC
         </div>
 
         <div>
-          <AutoGeneratePanel draft={draft} houseEdge={draft.houseEdge} onApply={skins => setDraft(d => ({ ...d, skins }))} />
+          <AutoGeneratePanel draft={draft} houseEdge={draft.houseEdge} onApply={skins => setDraft(d => ({ ...d, skins }))} onSetPrice={p => { const v = parseFloat(p); if (!isNaN(v) && v > 0) setDraft(d => ({ ...d, price: v.toFixed(2) })); }} />
           <div style={{ ...cardStyle, padding: 18, marginBottom: 14 }}>
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12, color: C.primary }}>Browse Steam Market Skins</div>
             <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
