@@ -1220,9 +1220,24 @@ function LibraryManager({ collections, onChange, onBack }: { collections: ImageC
     setEditingName(n => { const c = { ...n }; delete c[id]; return c; });
   }
   function removeImage(colId: string, idx: number) { onChange(collections.map(c => c.id === colId ? { ...c, images: c.images.filter((_, i) => i !== idx) } : c)); }
-  function handleFiles(colId: string, files: FileList | null) {
+  const [uploading, setUploading] = useState<Record<string, boolean>>({});
+
+  async function handleFiles(colId: string, files: FileList | null) {
     if (!files || !files.length) return;
-    Promise.all(Array.from(files).map(f => new Promise<string>(resolve => { const r = new FileReader(); r.onload = e => resolve(e.target?.result as string); r.readAsDataURL(f); }))).then(urls => onChange(collections.map(c => c.id === colId ? { ...c, images: [...c.images, ...urls] } : c)));
+    setUploading(u => ({ ...u, [colId]: true }));
+    const urls: string[] = [];
+    for (const file of Array.from(files)) {
+      const dataUrl = await new Promise<string>(resolve => {
+        const r = new FileReader(); r.onload = e => resolve(e.target?.result as string); r.readAsDataURL(file);
+      });
+      try {
+        const res = await fetch('/api/upload-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataUrl, filename: file.name }) });
+        const json = await res.json();
+        urls.push(json.url ?? dataUrl);
+      } catch { urls.push(dataUrl); }
+    }
+    onChange(collections.map(c => c.id === colId ? { ...c, images: [...c.images, ...urls] } : c));
+    setUploading(u => ({ ...u, [colId]: false }));
   }
 
   return (
@@ -1258,7 +1273,7 @@ function LibraryManager({ collections, onChange, onBack }: { collections: ImageC
                   <span style={{ flex: 1, fontFamily: 'var(--font-funnel)', fontWeight: 700, fontSize: 15, color: C.primary }}>{col.name}</span>
                   <span style={{ fontSize: 12, color: C.muted }}>{col.images.length} image{col.images.length !== 1 ? 's' : ''}</span>
                   <Btn size="sm" variant="ghost" onClick={() => setEditingName(n => ({ ...n, [col.id]: col.name }))}><span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><IconPencil /> Rename</span></Btn>
-                  <Btn size="sm" variant="secondary" onClick={() => fileRefs.current[col.id]?.click()}><span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><IconPlus /> Upload</span></Btn>
+                  <Btn size="sm" variant="secondary" disabled={uploading[col.id]} onClick={() => fileRefs.current[col.id]?.click()}><span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><IconPlus />{uploading[col.id] ? 'Uploading…' : 'Upload'}</span></Btn>
                   {col.id !== 'classic' && <Btn size="sm" variant="danger" onClick={() => onChange(collections.filter(c => c.id !== col.id))}><IconTrash /></Btn>}
                 </>
               )}

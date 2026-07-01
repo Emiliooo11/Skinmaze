@@ -98,7 +98,17 @@ export async function fetchImageCollections(): Promise<DbImageCollection[]> {
 }
 
 export async function saveImageCollections(cols: DbImageCollection[]) {
-  await supabase.from('image_collections').upsert(cols);
+  // Delete collections no longer present
+  const ids = cols.map(c => c.id);
+  if (ids.length > 0) {
+    await supabase.from('image_collections').delete().not('id', 'in', `(${ids.map(id => `'${id}'`).join(',')})`);
+  } else {
+    await supabase.from('image_collections').delete().neq('id', '');
+  }
+  if (cols.length > 0) {
+    const { error } = await supabase.from('image_collections').upsert(cols);
+    if (error) { console.error('saveImageCollections error:', error); throw error; }
+  }
 }
 
 export async function deleteImageCollection(id: string) {
