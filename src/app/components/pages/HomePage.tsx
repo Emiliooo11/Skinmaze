@@ -17,13 +17,17 @@ function tabStyle(active: boolean) {
   };
 }
 
-function CaseCard({ name, price, onOpen, height = 128 }: { name: string; price: string; onOpen: () => void; height?: number }) {
+function CaseCard({ name, price, image, onOpen, height = 128 }: { name: string; price: string; image?: string; onOpen: () => void; height?: number }) {
   return (
     <div onClick={onOpen} style={{ background: '#0e120e', border: '1px solid rgba(255,255,255,.06)', borderRadius: 14,
       padding: 14, cursor: 'pointer', transition: 'transform .14s, border-color .14s' }}
       onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)'; (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(95,213,95,.4)'; }}
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,.06)'; }}>
-      <Placeholder label="case render" height={height} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height, marginBottom: 8 }}>
+        {image
+          ? <img src={image} alt={name} style={{ maxHeight: height, maxWidth: '100%', objectFit: 'contain', filter: 'drop-shadow(0 6px 18px rgba(0,0,0,.6))' }} />
+          : <Placeholder label="case render" height={height} />}
+      </div>
       <RarityBar />
       <div style={{ textAlign: 'center', fontWeight: 600, fontSize: 14 }}>{name}</div>
       <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 5, fontSize: 13, color: '#cfd4cf' }}>
@@ -227,7 +231,7 @@ export function HomePage() {
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14 }}>
-            {section1Cases.map(c => <CaseCard key={c.id} name={c.name} price={c.price} onOpen={() => openCase(c)} />)}
+            {section1Cases.map(c => <CaseCard key={c.id} name={c.name} price={c.price} image={c.image} onOpen={() => openCase(c)} />)}
           </div>
         </div>
       )}
@@ -247,7 +251,7 @@ export function HomePage() {
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14 }}>
-            {section2Cases.map(c => <CaseCard key={c.id} name={c.name} price={c.price} onOpen={() => openCase(c)} />)}
+            {section2Cases.map(c => <CaseCard key={c.id} name={c.name} price={c.price} image={c.image} onOpen={() => openCase(c)} />)}
           </div>
         </div>
       )}
@@ -267,7 +271,7 @@ export function HomePage() {
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14 }}>
-            {section3Cases.map(c => <CaseCard key={c.id} name={c.name} price={c.price} onOpen={() => openCase(c)} />)}
+            {section3Cases.map(c => <CaseCard key={c.id} name={c.name} price={c.price} image={c.image} onOpen={() => openCase(c)} />)}
           </div>
         </div>
       )}
@@ -321,7 +325,7 @@ export function HomePage() {
 
           {/* Case grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14, position: 'relative' }}>
-            {bestItems.map(c => <CaseCard key={c.id} name={c.name} price={c.price} onOpen={() => openCase(c)} />)}
+            {bestItems.map(c => <CaseCard key={c.id} name={c.name} price={c.price} image={c.image} onOpen={() => openCase(c)} />)}
           </div>
         </div>
       )}
