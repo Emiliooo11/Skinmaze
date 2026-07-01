@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { CASE_IMAGES, RAR, Rarity } from '@/app/lib/data';
 import { usdToCoins, fmtCoins } from '@/app/lib/currency';
 import { fetchCases, upsertCase, deleteCase as dbDeleteCase, fetchHomeLayout, saveHomeLayout as dbSaveHomeLayout, fetchImageCollections, saveImageCollections, deleteImageCollection, DbCase, fetchDashboardStats, DashboardStats, fetchPlayers, DbPlayer, upsertPlayer, deletePlayer, fetchAffiliates, DbAffiliate, upsertAffiliate, deleteAffiliate, fetchReferralCodes, DbReferralCode, createReferralCode, deleteReferralCode, fetchAllReferralUses, fetchWagers, DbWager } from '@/app/lib/db';
@@ -136,10 +137,23 @@ function IconCheck() { return <svg width="12" height="12" viewBox="0 0 24 24" fi
 function IconCopy() { return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>; }
 function IconX() { return <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>; }
 function IconImage() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>; }
+function IconPencil() { return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>; }
+
+const SECTION_PATHS: Record<string, AdminSection> = {
+  '/admin': 'dashboard', '/admin/cases': 'cases', '/admin/players': 'players',
+  '/admin/homelayout': 'homelayout', '/admin/affiliates': 'affiliates',
+};
+const PATH_FOR: Record<AdminSection, string> = {
+  dashboard: '/admin', cases: '/admin/cases', players: '/admin/players',
+  homelayout: '/admin/homelayout', affiliates: '/admin/affiliates',
+};
 
 // == Main AdminPage ==
 export function AdminPage() {
-  const [section, setSection] = useState<'dashboard'|'cases'|'players'|'homelayout'|'affiliates'>('dashboard');
+  const router = useRouter();
+  const pathname = usePathname();
+  const sectionFromPath = SECTION_PATHS[pathname] ?? 'dashboard';
+  const [section, setSection] = useState<AdminSection>(sectionFromPath);
   const [view, setView] = useState<'list'|'builder'|'library'>('list');
   const [cases, setCases] = useState<AdminCase[]>([]);
   const [editing, setEditing] = useState<AdminCase | null>(null);
@@ -194,14 +208,14 @@ export function AdminPage() {
 
   if (view === 'builder' && editing) {
     return (
-      <AdminShell section={section} onSection={s => { setSection(s); setView('list'); }}>
+      <AdminShell section={section} onSection={navigate}>
         <CaseBuilder initial={editing} collections={collections} homeLayout={homeLayout} onSave={async (c, sectionId) => { await saveCase(c); if (sectionId) { const updated = homeLayout.map(s => s.id === sectionId && !s.caseIds.includes(c.id) ? { ...s, caseIds: [...s.caseIds, c.id] } : s); await updateHomeLayout(updated); } setEditing(null); setView('list'); }} onBack={() => { setEditing(null); setView('list'); }} onManageImages={() => setView('library')} />
       </AdminShell>
     );
   }
   if (view === 'library') {
     return (
-      <AdminShell section={section} onSection={s => { setSection(s); setView('list'); }}>
+      <AdminShell section={section} onSection={navigate}>
         <LibraryManager collections={collections} onChange={updateCollections} onBack={() => setView('list')} />
       </AdminShell>
     );
@@ -224,7 +238,8 @@ export function AdminPage() {
     );
     return null;
   }
-  return <AdminShell section={section} onSection={s => { setSection(s); setView('list'); }}>{renderContent()}</AdminShell>;
+  function navigate(s: AdminSection) { setSection(s); setView('list'); router.push(PATH_FOR[s]); }
+  return <AdminShell section={section} onSection={navigate}>{renderContent()}</AdminShell>;
 }
 
 // == AdminShell ==
@@ -1199,6 +1214,11 @@ function LibraryManager({ collections, onChange, onBack }: { collections: ImageC
 
   function addCollection() { if (!newName.trim()) return; onChange([...collections, { id: Date.now().toString(), name: newName.trim(), images: [] }]); setNewName(''); }
   function renameCollection(id: string, name: string) { onChange(collections.map(c => c.id === id ? { ...c, name } : c)); }
+  function commitRename(id: string) {
+    const name = editingName[id];
+    if (name !== undefined && name.trim()) renameCollection(id, name.trim());
+    setEditingName(n => { const c = { ...n }; delete c[id]; return c; });
+  }
   function removeImage(colId: string, idx: number) { onChange(collections.map(c => c.id === colId ? { ...c, images: c.images.filter((_, i) => i !== idx) } : c)); }
   function handleFiles(colId: string, files: FileList | null) {
     if (!files || !files.length) return;
@@ -1220,16 +1240,29 @@ function LibraryManager({ collections, onChange, onBack }: { collections: ImageC
       </div>
       {collections.length === 0 && <div style={{ textAlign: 'center', padding: 60, color: C.muted, fontSize: 13 }}>No collections yet.</div>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {collections.map(col => (
+        {collections.map(col => {
+          const isEditing = col.id in editingName;
+          return (
           <div key={col.id} style={{ ...cardStyle, padding: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <input value={editingName[col.id] ?? col.name} onChange={e => setEditingName(n => ({ ...n, [col.id]: e.target.value }))}
-                onBlur={() => { const name = editingName[col.id]; if (name !== undefined && name.trim()) renameCollection(col.id, name.trim()); setEditingName(n => { const c = { ...n }; delete c[col.id]; return c; }); }}
-                style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.primary, fontFamily: 'var(--font-funnel)', fontWeight: 700, fontSize: 15, outline: 'none', padding: '4px 0' }} />
-              <span style={{ fontSize: 12, color: C.muted }}>{col.images.length} image{col.images.length !== 1 ? 's' : ''}</span>
-              <Btn size="sm" variant="secondary" onClick={() => fileRefs.current[col.id]?.click()}><span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><IconPlus /> Upload</span></Btn>
+              {isEditing ? (
+                <>
+                  <input autoFocus value={editingName[col.id]} onChange={e => setEditingName(n => ({ ...n, [col.id]: e.target.value }))}
+                    onKeyDown={e => { if (e.key === 'Enter') commitRename(col.id); if (e.key === 'Escape') setEditingName(n => { const c = { ...n }; delete c[col.id]; return c; }); }}
+                    style={{ flex: 1, ...inputStyle, fontWeight: 700, fontSize: 14 }} />
+                  <Btn size="sm" onClick={() => commitRename(col.id)}>Save</Btn>
+                  <Btn size="sm" variant="secondary" onClick={() => setEditingName(n => { const c = { ...n }; delete c[col.id]; return c; })}>Cancel</Btn>
+                </>
+              ) : (
+                <>
+                  <span style={{ flex: 1, fontFamily: 'var(--font-funnel)', fontWeight: 700, fontSize: 15, color: C.primary }}>{col.name}</span>
+                  <span style={{ fontSize: 12, color: C.muted }}>{col.images.length} image{col.images.length !== 1 ? 's' : ''}</span>
+                  <Btn size="sm" variant="ghost" onClick={() => setEditingName(n => ({ ...n, [col.id]: col.name }))}><span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><IconPencil /> Rename</span></Btn>
+                  <Btn size="sm" variant="secondary" onClick={() => fileRefs.current[col.id]?.click()}><span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><IconPlus /> Upload</span></Btn>
+                  {col.id !== 'classic' && <Btn size="sm" variant="danger" onClick={() => onChange(collections.filter(c => c.id !== col.id))}><IconTrash /></Btn>}
+                </>
+              )}
               <input ref={el => { fileRefs.current[col.id] = el; }} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => handleFiles(col.id, e.target.files)} />
-              {col.id !== 'classic' && <Btn size="sm" variant="danger" onClick={() => onChange(collections.filter(c => c.id !== col.id))}><IconTrash /></Btn>}
             </div>
             {col.images.length === 0 ? (
               <div onClick={() => fileRefs.current[col.id]?.click()} style={{ border: `2px dashed ${C.border}`, borderRadius: 10, padding: '32px 0', textAlign: 'center', color: C.muted, fontSize: 13, cursor: 'pointer' }}>Click Upload or drop images here</div>
@@ -1244,7 +1277,7 @@ function LibraryManager({ collections, onChange, onBack }: { collections: ImageC
               </div>
             )}
           </div>
-        ))}
+        ); })}
       </div>
     </div>
   );
